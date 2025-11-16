@@ -1,0 +1,29 @@
+# ----- Python -----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ----- Virtual Environment -----
+venv/
+
+# ----- VSCode -----
+.vscode/
+
+# ----- Environment files -----
+.env
+
+# ----- OS / Editor junk -----
+.DS_Store
+Thumbs.db
+
+# ----- Logs -----
+*.log
+
+# ----- RealSense build artifacts (혹시 있을 경우) -----
+build/
+dist/
+
+# ----- Backup files -----
+*.bak
+*.swp
