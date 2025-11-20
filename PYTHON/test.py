@@ -1,27 +1,22 @@
-import threading
-import time
+from vision.vision import RealSenseColorDetector
 from uart.uart import uart
+import cv2
 
-u = uart('COM4', 9600)
-emergency = threading.Event()
+detector = RealSenseColorDetector(roi_area=(230, 280, 425, 475))
+comm = uart('COM4', 9600)
 
-def monitor():
+try:
     while True:
-        received_data = u.receive()
-        if (received_data == "111"):
-            emergency.set() #비상상태 ON
+        view, color = detector.detect_one_frame()
+        if view is not None:
+            cv2.imshow("Color Detection", view)
+            if color:
+                data = "001"
+                comm.send(data)
+                print("Detected color:", color)
         
-        elif (received_data == "000"):
-            emergency.clear() #비상상태 OFF
-
-threading.Thread(target=monitor, daemon=True).start()
-
-while True:
-    #비상상태라면
-    if (emergency.is_set()):
-        print(f"EMERGENCY")
-    
-    else:
-        print(f"WORKING")
-    
-    time.sleep(1)
+        # 'q' 키를 누르면 종료
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+finally:
+    detector.stop()

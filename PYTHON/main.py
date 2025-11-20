@@ -20,19 +20,19 @@ NOW_STATE = 0
 
 #################### 기본 세팅부 ####################
 # Modbus 연결
-client = ModbusTCPClient('IP', 'PORT_NUMBER')
-client.connect()
+# client = ModbusTCPClient('IP', 'PORT_NUMBER')
+# client.connect()
 
 # Dobot 초기화
-robot = dobot('PORT_NUMBER')
+robot = dobot('COM6')
 robot.connect()
 robot.home()
 
 # UART 연결
-comm = uart('PORT_NUMBER', 'BAUDRATE')
+comm = uart('COM4', 9600)
 
 # D435i 연결
-vision = RealSenseColorDetector(('ROI 영역'))
+vision = RealSenseColorDetector(roi_area=(230, 280, 425, 475))
 ###################################################
 
 ################## RECEIVE THREAD ##################

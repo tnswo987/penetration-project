@@ -1,6 +1,6 @@
-import DobotEDU
+from robot.robot import dobot
 
-device = DobotEDU.dobot_magician
-device.queue
+robot = dobot('COM6')
+robot.connect()
 
-device.get_queuedcmd_currentindex()
+robot.home()
