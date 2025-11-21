@@ -16,7 +16,7 @@ class dobot:
         self.device.set_homecmd(self.port)
 
     def move(self, pos_x, pos_y, pos_z, pos_r):
-        self.device.set_ptpcmd(self.port, ptp_mode=2, x=pos_x, y=pos_y, z=pos_z, r=pos_r, is_queued=True, is_wait=False)
+        self.device.set_ptpcmd(self.port, ptp_mode=2, x=pos_x, y=pos_y, z=pos_z, r=pos_r)
     
     def suction(self, state):
         if state == 1:

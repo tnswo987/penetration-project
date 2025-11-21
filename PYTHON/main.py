@@ -2,10 +2,37 @@ from robot.robot import dobot
 from uart.uart import uart
 from vision.vision import RealSenseColorDetector
 from modbus.client import ModbusTCPClient
+import cv2
 import threading
 import time
-    
-#################### STATE 정의 ####################
+
+#################### MEMO ######################
+'''
+0. 컨베이어 벨트, Turtlebot3 ROS2 추가
+1. 모드버스 IP, PORT 바꿔야함
+2. 스레드 부분, receive_data 상태 갱신하고 None으로 바뀌는지 확인
+3. 모드버스 구조 생각해서, 모드버스 write도 구현하자
+4. PICK_POSITION 실제로 측정해서 고치자
+5. SORT_POSITION 실제로 측정해서 고치자
+'''
+################################################
+
+#################### DEFINE ####################
+NOW_STATE = "WAIT_SIGNAL"
+COLOR_CODE = {
+    "RED": "001",
+    "GREEN": "010",
+    "BLUE": "011",
+    "YELLOW": "100",
+}
+PICK_POSITION = (200, 100, -40, 0)
+SORT_POSITION = {
+    "RED":     (300, 50, -30, 0),
+    "GREEN":   (300, 150, -30, 0),
+    "BLUE":    (300, 250, -30, 0),
+    "YELLOW":  (300, 350, -30, 0),
+}
+last_detected_color = None
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 대기 상태 : WAIT_SIGNAL
 공정 시작 : START_PROCESS
@@ -18,65 +45,103 @@ import time
 '''''''''''''''''''''''''''''''''''''''''''''''''''
 ###################################################
 
-#################### 기본 세팅부 ####################
+#################### SETUP ####################
 # Modbus 연결
 client = ModbusTCPClient('255.255.255.0', 'PORT_NUMBER')
 client.connect()
+print("[MODBUS] Client connected successfully.")
 
 # Dobot 초기화
 robot = dobot('COM6')
 robot.connect()
 robot.home()
+print("[DOBOT] Device connected successfully.")
 
 # UART 연결
 comm = uart('COM4', 9600)
+print("[UART] Device connected successfully.")
 
 # D435i 연결
 vision = RealSenseColorDetector(roi_area=(230, 280, 425, 475))
+print("[D435i] Device connected successfully.")
 ###################################################
 
-################## RECEIVE THREAD ##################
-SIGNAL_MAP = {
-    "110": "PROCESS_START",
-    "101": "WORK_START",
-    "111": "EMERGENCY_ON",
-    "000": "EMERGENCY_OFF",
-}
-
+################## THREAD ##################
 def stm32_listener():
-    print("[UART] STM32_LISTENER THREAD STARTED!")
+    print("[UART] stm32_listener thread started!")
     global NOW_STATE
     
-    # 무한 반복
     while True:
         receive_data = comm.receive()
         
-        # STM32로부터 데이터를 받았다면
         if receive_data:
-            if receive_data in SIGNAL_MAP:
-                signal = SIGNAL_MAP[receive_data]
-                
-                # 공정 시작 신호
-                if signal == "PROCESS_START":
-                    print("[UART] PROCESS_START(110) Received from STM32")
-                    NOW_STATE = STATE_MAP[1]
-                
-                # 작업 시작 신호
-                elif signal == "WORK_START":
-                    print("[UART] WORK_START(101) Received from STM32")
-                    NOW_STATE = STATE_MAP[3]
-                
-                # 비상 상황 발생 신호
-                elif signal == "EMERGENCY_ON":
-                    print("[UART] EMERGENCY_ON(111) Received from STM32")
-                    NOW_STATE = STATE_MAP[5]
-                
-                # 비상 상황 종료 신호
-                elif signal == "EMERGENCY_OFF":
-                    print("[UART] EMERGENCY_OFF(000) Received from STM32")
-                    NOW_STATE = STATE_MAP[6]
+            if receive_data == "110":
+                    print("[UART] Received: START_PROCESS(110) from STM32.")
+                    NOW_STATE = "START_PROCESS"
+            
+            elif receive_data == "101":
+                    print("[UART] Received: CLASSIFY_OBJECT(101) from STM32.")
+                    NOW_STATE = "CLASSIFY_OBJECT"
+            
+            elif receive_data == "111":
+                    print("[UART] Received: EMERGENCY_ON(111) from STM32.")
+                    NOW_STATE = "EMERGENCY_ON"
+            
+            elif receive_data == "000":
+                    print("[UART] Received: EMERGENCY_OFF(000) from STM32.")
+                    NOW_STATE = "EMERGENCY_OFF"
+                    
+        time.sleep(0.01)
 ####################################################
 
+################## MAIN ##################
+t = threading.Thread(target=stm32_listener)
+t.start()
+
+while True:
+    if NOW_STATE == "WAIT_SIGNAL":
+        pass
+    
+    elif NOW_STATE == "START_PROCESS":
+        NOW_STATE = "DETECT_OBJECT"
+        
+    elif NOW_STATE == "DETECT_OBJECT":
+        view, detected_color = vision.detect_one_frame()
+        
+        if view is not None:
+            cv2.imshow("D435i", view)
+            cv2.waitKey(1)
+        
+        if detected_color:
+            print(f"[D435i] Detected: {detected_color}")
+            last_detected_color = detected_color        
+            comm.send(COLOR_CODE[detected_color])
+            cv2.destroyWindow("D435i")
+            
+            NOW_STATE = "WAIT_SIGNAL"
+
+    elif NOW_STATE == "CLASSIFY_OBJECT":
+        print(f"[DOBOT] Start PICK & SORT")
+        
+        robot.move(*PICK_POSITION)
+        robot.suction(1)
+        
+        sort_pos = SORT_POSITION[last_detected_color]
+        robot.move(*sort_pos)
+        robot.suction(0)
+        
+        NOW_STATE = "COMPLETE_TASK"
+    elif NOW_STATE == "COMPLETE_TASK":
+        #작성예정
+    elif NOW_STATE == "EMERGENCY_ON":
+        #작성예정
+    elif NOW_STATE == "EMERGENCY_OFF":
+        #작성예정
+    elif NOW_STATE == "FINISH_PROCESS":
+        #작성예정
+    
+    time.sleep(0.01)
+##########################################
 
 
 
