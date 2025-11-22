@@ -14,6 +14,7 @@ import time
 3. 모드버스 구조 생각해서, 모드버스 write도 구현하자
 4. PICK_POSITION 실제로 측정해서 고치자
 5. SORT_POSITION 실제로 측정해서 고치자
+6. 현재 COMPLETE_TASK → DETECT_OBJECT로 돌아오고 있는 상황인데 STM32가 컨베이어 벨트를 반드시 ON했다는 보장이 없다.
 '''
 ################################################
 
@@ -131,14 +132,19 @@ while True:
         robot.suction(0)
         
         NOW_STATE = "COMPLETE_TASK"
+        
     elif NOW_STATE == "COMPLETE_TASK":
-        #작성예정
+        print(f"[DOBOT] Task Completed")
+        comm.send("000")
+        
+        NOW_STATE = "DETECT_OBJECT"
+        
     elif NOW_STATE == "EMERGENCY_ON":
-        #작성예정
+        pass
     elif NOW_STATE == "EMERGENCY_OFF":
-        #작성예정
+        pass
     elif NOW_STATE == "FINISH_PROCESS":
-        #작성예정
+        pass
     
     time.sleep(0.01)
 ##########################################
