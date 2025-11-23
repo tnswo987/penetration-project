@@ -79,6 +79,7 @@ def wait_start_func():
     
     while True:
         if START_PROCESS_FLAG:
+            #*****************************#
             START_PROCESS_FLAG = False
             return "START_PROCESS"
                 
@@ -126,25 +127,25 @@ def classify_object_func():
     print(f"[DOBOT] Start PICK & SORT")
     
     while True:
-        if step <= 0:
+        if step == 0:
             robot.move(*PICK_POSITION)
-            step += 1
+            step = 1
             yield
         
         if step == 1:
             robot.suction(1)
-            step += 1
+            step = 2
             yield
         
         if step == 2:
             sort_pos = SORT_POSITION[last_detected_color]
             robot.move(*sort_pos)
-            step += 1
+            step = 3
             yield
         
         if step == 3:
             robot.suction(0)
-            step += 1
+            step = 4
             yield
         
         if step == 4:
@@ -158,11 +159,24 @@ def complete_task_func():
     
     if FINISH_PROCESS_FLAG:
         FINISH_PROCESS_FLAG = False
-        robot.home()    
-        return "WAIT_START"
+        return "FINISH_PROCESS"
     
     else:   
         return "DETECT_OBJECT"
+
+def finish_process_func():
+    global step
+    step = 0
+    print(f"[SYSTEM] Finish Process...")
+    
+    while True:
+        if step == 0:
+            robot.home()
+            step = 1
+            yield
+            
+        if step == 1:
+            return "WAIT_START"
 ###################################################
 ################## THREAD ##################
 def stm32_listener():
@@ -179,29 +193,32 @@ def stm32_listener():
         
         if receive_data:
             if receive_data == "110":
+                if NOW_STATE == "WAIT_START":
                     print("[UART] Received: START_PROCESS(110) from STM32.")
                     START_PROCESS_FLAG = True
             
             elif receive_data == "100":
+                if NOW_STATE != "WAIT_START":
                     print("[UART] Received: FINISH_PROCESS(100) from STM32.")
-                    if NOW_STATE != "WAIT_START":
-                        FINISH_PROCESS_FLAG = True
+                    FINISH_PROCESS_FLAG = True
                     
             elif receive_data == "101":
+                if NOW_STATE == "WAIT_CLASSIFY":
                     print("[UART] Received: CLASSIFY_OBJECT(101) from STM32.")
                     CLASSIFY_OBJECT_FLAG = True
             
             elif receive_data == "111":
-                    print("[UART] Received: EMERGENCY_ON(111) from STM32.")
-                    robot.stop()
-                    robot.clear()
-                    step -= 1
-                    EMERGENCY_FLAG = True
+                print("[UART] Received: EMERGENCY_ON(111) from STM32.")
+                robot.stop()
+                robot.clear()
+                temp = step
+                EMERGENCY_FLAG = True
             
             elif receive_data == "000":
-                    print("[UART] Received: EMERGENCY_OFF(000) from STM32.")
-                    robot.start()
-                    EMERGENCY_FLAG = False
+                print("[UART] Received: EMERGENCY_OFF(000) from STM32.")
+                robot.start()
+                step = temp
+                EMERGENCY_FLAG = False
                     
         time.sleep(0.01)
 ####################################################
@@ -212,6 +229,7 @@ t.start()
 STATE_FUNCTIONS = {
     "WAIT_START": wait_start_func,
     "START_PROCESS": start_process_func,
+    "FINISH_PROCESS": finish_process_func,
     "DETECT_OBJECT": detect_object_func,
     "WAIT_CLASSIFY": wait_classify_func,
     "CLASSIFY_OBJECT": classify_object_func,
