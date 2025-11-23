@@ -1,0 +1,14 @@
+--------- Exported at 2025-11-24 ---------
+[00:59] [DOBOT] Device connected successfully.
+[00:59] [DOBOT] Start PICK & SORT
+--------- Exported at 2025-11-24 ---------
+[00:59] [DOBOT] Device connected successfully.
+[00:59] [DOBOT] Start PICK & SORT
+--------- Exported at 2025-11-24 ---------
+[01:00] [DOBOT] Device connected successfully.
+[01:00] [DOBOT] Start PICK & SORT
+--------- Exported at 2025-11-24 ---------
+[01:00] [DOBOT] Device connected successfully.
+[01:00] [DOBOT] Start PICK & SORT
+[01:00] 광철쿤
+[01:00] 해냈슴
