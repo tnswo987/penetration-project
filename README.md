@@ -9,7 +9,7 @@ pip install pymodbus==3.6.9
 # SERIAL
 pip install pyserial
 # D435i
-pip install pyrealsens2
+pip install pyrealsense2
 # OPENCV
 pip install opencv-python
 ```
@@ -23,7 +23,7 @@ pip install opencv-python
 ▶️  공정 시작    : 110  
 ⏹️  공정 종료    : 100  
 🛠  작업 시작    : 101  
-❗  비상 시작    : 111  
+❗  비상 시작    : 111
 ✔️  비상 종료    : 000
 ```
 
