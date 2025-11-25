@@ -1,19 +1,31 @@
-# 🗓️ X_Week MINUTE / 25.00.00
+# 🚀 Environment
+```bash
+# PYTHON
+python 3.8.10
+# DOBOT
+pip install DobotEDU==2.2.2
+# MODBUS
+pip install pymodbus==3.6.9
+# SERIAL
+pip install pyserial
+# D435i
+pip install pyrealsens2
+# OPENCV
+pip install opencv-python
+```
 
-## ✅ 1. Done
-한 주 동안 본인이 완료한 과업을 작성합니다.
+# 🎛️ SIGNAL
+```
+🔴 RED         : 001  
+🟢 GREEN       : 010  
+🔵 BLUE        : 011  
+🟡 YELLOW      : 100  
+▶️  공정 시작    : 110  
+⏹️  공정 종료    : 100  
+🛠  작업 시작    : 101  
+❗  비상 시작    : 111  
+✔️  비상 종료    : 000
+```
 
-## 🗒️ 2. Evidence
-본인이 완료한 과업에 대한 간단한 동작 사진을 작성합니다.
-
-## ⚠️ 3. Issues / Improvements
-한 주 동안의 과업을 진행하면서 해결하지 못한 문제점이나 떠오른 개선 사항을 작성합니다.
-
-## 💪 4. Decisions
-회의를 통해 결정된 사안을 작성합니다.
-
-## 📊 5. Progress
-진행률을 세부적으로 작성합니다.
-
-## 🎯 6. Next Goals
-다음 주 동안 본인이 완료할 과업을 작성합니다.
+# 🧠 FLOW
+작성 예정
