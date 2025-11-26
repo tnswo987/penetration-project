@@ -58,6 +58,10 @@ COLOR_CODE = {
 }
 last_detected_color = None
 
+# -------------- TURTLE VAR --------------
+yellow_cnt = 0
+turtlebot_busy = False
+
 # ------------- EMERGENCY VAR -------------
 temp = None
 cnt = 0
@@ -110,6 +114,8 @@ def start_process_func():
 
 def detect_object_func():
     global last_detected_color
+    global yellow_cnt
+    global turtlebot_busy
     
     while True:
         view, detected_color = vision.detect_one_frame()
@@ -120,7 +126,7 @@ def detect_object_func():
             cv2.waitKey(1)
         yield
 
-        if detected_color:
+        if detected_color and detected_color != "YELLOW":
             client.conveyor_off()
             client.write_log(f"[D435i] {detected_color} 탐지")
             print(f"[D435i] {detected_color} 탐지")
@@ -128,7 +134,25 @@ def detect_object_func():
             comm.send(COLOR_CODE[detected_color])
             return "WAIT_CLASSIFY"
         
-        yield
+        elif detected_color == "YELLOW":
+            if turtlebot_busy:
+                yield
+                continue
+            
+            yellow_cnt += 1
+            client.write_log(f"[D435i] YELLOW : {yellow_cnt}")
+            print(f"[D435i] YELLOW : {yellow_cnt}")
+            
+            if yellow_cnt >= 3:
+                yellow_cnt = 0
+                threading.Thread(target=delayed_turtlebot_start).start()
+            
+            yield
+            continue
+        
+        else:
+            yield
+            continue
 
 def wait_classify_func():
     global CLASSIFY_OBJECT_FLAG
@@ -295,6 +319,29 @@ def stm32_listener():
                     
         time.sleep(0.01)
 
+def delayed_turtlebot_start():
+    global turtlebot_busy
+    
+    DELAY_TIME = 1.5
+    time.sleep(DELAY_TIME)
+    
+    client.turtlebot_start()
+    print("[TURTLE] TURTLEBOT 출발")
+    client.write_log("[TURTLE] TURTLEBOT 출발")
+    turtlebot_busy = True
+
+def turtlebot_monitor():
+    global turtlebot_busy
+    
+    while True:
+        result = client.read_turtlebot_status()
+        
+        if result == False and turtlebot_busy == True:
+            turtlebot_busy = False
+            print("[TURTLE] TURTLEBOT 복귀")
+            client.write_log("[TURTLE] TURTLEBOT 복귀")
+        
+        time.sleep(0.1)
 # -------------- MAIN --------------
 client = initialize_modbus()
 robot = initialize_robot(client)
@@ -303,6 +350,8 @@ vision = initialize_vision(client)
     
 t1 = threading.Thread(target=stm32_listener)
 t1.start()
+t2 = threading.Thread(target=turtlebot_monitor)
+t2.start()
 
 STATE_FUNCTIONS = {
     "WAIT_START": wait_start_func,

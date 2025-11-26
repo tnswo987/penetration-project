@@ -31,6 +31,13 @@ class ModbusTCPClient:
     def conveyor_off(self):
         self.client.write_coil(0, False, slave=1)
     
+    def turtlebot_start(self):
+        self.client.write_coil(1, False, slave=1)
+    
+    def read_turtlebot_status(self):
+        result = self.client.read_coils(1, 1, slave=1)
+        return result.bits[0]
+
     def write_log(self, message: str):
         now = datetime.now().strftime("[%H:%M]")
         log_line = f"{now} {message}"
