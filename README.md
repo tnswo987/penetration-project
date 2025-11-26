@@ -19,7 +19,8 @@ pip install opencv-python
 🔴 RED         : 001  
 🟢 GREEN       : 010  
 🔵 BLUE        : 011  
-🟡 YELLOW      : 100  
+🟡 YELLOW      : 100
+* 노란색은 다른 LINE의 작업물  
 ▶️  공정 시작    : 110  
 ⏹️  공정 종료    : 100  
 🛠  작업 시작    : 101  
