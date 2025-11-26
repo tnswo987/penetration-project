@@ -8,7 +8,7 @@ import time
 ##########MEMO#################
 '''
 1. FINISH_PROCESS 부분에서 HOMING EMERGENCY 가능한지 CHECK
-2. 
+2. TURTLEBOT3 EMERGENCY 구현해야된다.
 '''
 ###############################
 '''
