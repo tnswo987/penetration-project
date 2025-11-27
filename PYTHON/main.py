@@ -39,6 +39,7 @@ START_PROCESS_FLAG = False
 FINISH_PROCESS_FLAG = False
 CLASSIFY_OBJECT_FLAG = False
 EMERGENCY_FLAG = False
+CONVEYOR_FLAG = False
 
 # -------------- DOBOT VAR --------------
 HOME_POS = [209.75, 0, 99.96, 0]
@@ -65,6 +66,7 @@ turtlebot_busy = False
 
 # ------------- EMERGENCY VAR -------------
 temp = None
+conveyor_temp = None
 cnt = 0
 
 # ------------ Transformer VAR ------------
@@ -137,7 +139,9 @@ def wait_start_func():
         yield
 
 def start_process_func():
+    global CONVEYOR_FLAG
     client.conveyor_on()
+    CONVEYOR_FLAG = True
     yield
     return "DETECT_OBJECT"
 
@@ -145,6 +149,7 @@ def detect_object_func():
     global last_detected_color
     global yellow_cnt
     global turtlebot_busy
+    global CONVEYOR_FLAG
     global PICK_POS
     
     while True:
@@ -158,6 +163,7 @@ def detect_object_func():
 
         if detected_color and detected_color != "YELLOW":
             client.conveyor_off()
+            CONVEYOR_FLAG = False
             client.write_log(f"[D435i] {detected_color} 탐지")
             print(f"[D435i] {detected_color} 탐지")
             last_detected_color = detected_color
@@ -269,6 +275,7 @@ def classify_object_func():
             
 def complete_task_func():
     global FINISH_PROCESS_FLAG
+    global CONVEYOR_FLAG
     comm.send("000")
     client.write_log("[DOBOT] 분류 작업을 완료하였습니다.")
     print(f"[DOBOT] 분류 작업을 완료하였습니다.")
@@ -281,6 +288,7 @@ def complete_task_func():
     
     else:
         client.conveyor_on()
+        CONVEYOR_FLAG = True
         return "DETECT_OBJECT"
 
 def finish_process_func():
@@ -298,7 +306,7 @@ def finish_process_func():
                 robot.home()
                 move_sent = True
                 
-            if robot.is_reached(HOME_POSITION):
+            if robot.is_reached(HOME_POS):
                 step = 1
                 move_sent = False 
             yield
@@ -316,8 +324,10 @@ def stm32_listener():
     global FINISH_PROCESS_FLAG
     global CLASSIFY_OBJECT_FLAG
     global EMERGENCY_FLAG
+    global CONVEYOR_FLAG
     global step
     global temp
+    global conveyor_temp
     global cnt
     
     while True:
@@ -345,6 +355,7 @@ def stm32_listener():
                 client.write_log("[UART] STM32로부터 EMERGENCY_ON(111) 신호를 수신했습니다.")
                 print("[UART] STM32로부터 EMERGENCY_ON(111) 신호를 수신했습니다.")
                 temp = step
+                conveyor_temp = CONVEYOR_FLAG
                 EMERGENCY_FLAG = True
             
             elif receive_data == "000":
@@ -352,6 +363,13 @@ def stm32_listener():
                 print("[UART] STM32로부터 EMERGENCY_OFF(000) 신호를 수신했습니다.")
                 step = temp
                 cnt = 0
+                if conveyor_temp:
+                    client.conveyor_on()
+                    CONVEYOR_FLAG = True
+                else:
+                    client.conveyor_off()
+                    CONVEYOR_FLAG = False
+                conveyor_temp = None
                 EMERGENCY_FLAG = False
                     
         time.sleep(0.01)
@@ -407,6 +425,8 @@ while True:
     if EMERGENCY_FLAG and cnt == 0:
         robot.stop()
         robot.clear()
+        client.conveyor_off()
+        CONVEYOR_FLAG = False
         cnt += 1
         move_sent = False
         time.sleep(0.01)
