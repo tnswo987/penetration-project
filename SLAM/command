@@ -1,5 +1,0 @@
-# turtle bot 환경
-ros2 launch turtlebot3_bringup robot.launch.py
-
-# 원격 PC 환경
-ros2 launch turtlebot3_navigation2 navigation2.launch.py map:=$HOME/pjt/pjt_map.yaml
