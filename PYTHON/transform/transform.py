@@ -64,4 +64,4 @@ class HandEyeCalibrator:
         Pc_h = np.array([Pc[0], Pc[1], Pc[2], 1.0])
         
         Pr = self.T @ Pc_h
-        return Pr[:3]
+        return [float(Pr[0]), float(Pr[1]), float(Pr[2]), 0]

@@ -2,6 +2,7 @@ from robot.robot import dobot
 from uart.uart import uart
 from vision.vision import RealSenseColorDetector
 from modbus.client import ModbusTCPClient
+from transform.transform import HandEyeCalibrator
 import cv2
 import threading
 import time
@@ -28,6 +29,7 @@ client = None
 vision = None
 robot = None
 comm = None
+transformer = None
 
 # ------------- NOW_STATE --------------
 NOW_STATE = "WAIT_START"
@@ -39,13 +41,13 @@ CLASSIFY_OBJECT_FLAG = False
 EMERGENCY_FLAG = False
 
 # -------------- DOBOT VAR --------------
-HOME_POSITION = [209.75, 0, 99.96, 0]
-PICK_POSITION_1 = [141.87, -233.48, 87.7, -53.06]
-PICK_POSITION_2 = [121.78, -257.6, 20.84, -64.7]
-SORT_POSITION = {
-    "RED":     [251.84, 66.75, -18.93, 14.84],
-    "GREEN":   [256.83, -7.62, -17.89, -1.7],
-    "BLUE":    [241.76, -86.3, -18.49, -19.65],
+HOME_POS = [209.75, 0, 99.96, 0]
+WAY_POS = [] # 경유지 채워넣자 
+PICK_POS = None
+SORT_POS = {
+    "RED":     [], # 실측해서 넣자.
+    "GREEN":   [], # 실측해서 넣자.
+    "BLUE":    [], # 실측해서 넣자.
 }
 step = 0
 move_sent = False
@@ -66,6 +68,27 @@ turtlebot_busy = False
 temp = None
 cnt = 0
 
+# ------------ Transformer VAR ------------
+CALIB_CAM_POINTS = [
+    (220, 134, 339.00),
+    (289, 117, 339.00),
+    (450, 120, 338.00),
+    (141,  62, 341.00),
+    (235,  61, 340.00),
+    (324, 181, 336.00),
+    (463, 182, 335.00),
+    (512, 120, 337.00),
+]
+CALIB_ROBOT_POINTS = [
+    (195.84, -240.59, 19.89),
+    (188.46, -199.43, 22.12),
+    (192.61, -108.00, 16.92),
+    (154.44, -285.33, 20.71),
+    (155.51, -229.09, 22.12),
+    (224.84, -180.33, 23.46),
+    (229.48, -100.59, 22.97),
+    (192.05,  -70.36, 22.96),
+]
 # ---------- SETUP FUNCTIONS ----------
 def initialize_modbus():
     client = ModbusTCPClient('192.168.110.101', 20000)
@@ -93,6 +116,12 @@ def initialize_vision(client):
     client.write_log("[D435i] 장치 연결이 완료되었습니다.")
     print("[D435i] 장치 연결이 완료되었습니다.")
     return vision
+
+def initialize_transformer(vision):
+    transformer = HandEyeCalibrator(vision.intr)
+    transformer.calibrate(CALIB_CAM_POINTS, CALIB_ROBOT_POINTS)
+    
+    return transformer
 
 # ---------- STATE FUNCTIONS ----------
 def wait_start_func():
@@ -347,6 +376,7 @@ client = initialize_modbus()
 robot = initialize_robot(client)
 comm = initialize_uart(client)
 vision = initialize_vision(client)
+transformer = initialize_transformer(vision)
     
 t1 = threading.Thread(target=stm32_listener)
 t1.start()
