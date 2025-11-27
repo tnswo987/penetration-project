@@ -42,7 +42,6 @@ EMERGENCY_FLAG = False
 
 # -------------- DOBOT VAR --------------
 HOME_POS = [209.75, 0, 99.96, 0]
-WAY_POS = [] # 경유지 채워넣자 
 PICK_POS = None
 SORT_POS = {
     "RED":     [], # 실측해서 넣자.
@@ -146,9 +145,10 @@ def detect_object_func():
     global last_detected_color
     global yellow_cnt
     global turtlebot_busy
+    global PICK_POS
     
     while True:
-        view, detected_color = vision.detect_one_frame()
+        view, detected_color, (u, v, depth) = vision.detect_one_frame()
         yield
         
         if view is not None:
@@ -161,6 +161,13 @@ def detect_object_func():
             client.write_log(f"[D435i] {detected_color} 탐지")
             print(f"[D435i] {detected_color} 탐지")
             last_detected_color = detected_color
+            
+            if u is not None and v is not None and depth is not None and depth > 0:
+                PICK_POS = transformer.d435i_to_dobot(u, v, depth)
+            
+            else:
+                continue
+            
             comm.send(COLOR_CODE[detected_color])
             return "WAIT_CLASSIFY"
         
@@ -199,51 +206,51 @@ def classify_object_func():
     global move_sent
     step = 0
     move_sent = False
+    
     client.write_log("[DOBOT] 분류 작업을 시작합니다.")
     print("[DOBOT] 분류 작업을 시작합니다.")
     
+    WAY_POS = [PICK_POS[0], PICK_POS[1], PICK_POS[2] + 50, PICK_POS[3]]
     while True:
         if step == 0:
             if not move_sent:
-                robot.move(*PICK_POSITION_1)
+                robot.move(*WAY_POS)
                 move_sent = True
             
-            if robot.is_reached(PICK_POSITION_1):
+            if robot.is_reached(WAY_POS):
                 step = 1
                 move_sent = False
             yield
             
         if step == 1:
             if not move_sent:
-                robot.move(*PICK_POSITION_2)
+                robot.move(*PICK_POS)
                 move_sent = True
                 
-            pose = robot.get_pose()
-            if robot.is_reached(PICK_POSITION_2):
+            if robot.is_reached(PICK_POS):
                 step = 2
                 move_sent = False 
             yield
         
         if step == 2:
             robot.suction(1)
-            time.sleep(0.5)
+            time.sleep(1)
             step = 3
             yield
             
         if step == 3:
             if not move_sent:
-                robot.move(*PICK_POSITION_1)
+                robot.move(*WAY_POS)
                 move_sent = True
             
-            pose = robot.get_pose()
-            if robot.is_reached(PICK_POSITION_1):
+            if robot.is_reached(WAY_POS):
                 step = 4
                 move_sent = False
             yield
             
         if step == 4:
             if not move_sent:
-                sort_pos = SORT_POSITION[last_detected_color]
+                sort_pos = SORT_POS[last_detected_color]
                 robot.move(*sort_pos)
                 move_sent = True
             
