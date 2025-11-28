@@ -8,7 +8,7 @@ from geometry_msgs.msg import PoseStamped
 from pymodbus.client import ModbusTcpClient
 
 # Modbus 설정
-MODBUS_HOST = "192.168.110.108"
+MODBUS_HOST = "192.168.110.101"
 MODBUS_PORT = 20000
 MODBUS_UNIT_ID = 1    
 
