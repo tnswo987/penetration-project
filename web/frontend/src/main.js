@@ -2,7 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 
-import './assets/main.css' // 기본 생성돼 있으면 그대로 둬도 됨
+import './assets/main.css'
 
 const app = createApp(App)
 

@@ -1,16 +1,355 @@
-/* �⺻ ���� ��Ÿ�� */
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 
-* {
+/* ===== Global Theme ===== */
+:root {
+  --bg-body: #e9edf4;
+  --bg-main: #f5f7fb;
+  --bg-sidebar: #151922;
+  --bg-card: #ffffff;
+
+  --text-main: #1f2933;
+  --text-muted: #7b8290;
+  --text-invert: #f5f7ff;
+
+  --accent: #42b883;
+  --accent-soft: rgba(66, 184, 131, 0.12);
+  --border-subtle: #dde2ec;
+
+  --log_delete: #42b883;
+  --log_delete-soft: rgba(66, 184, 131, 0.12);
+}
+
+/* ===== Reset / Base ===== */
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
   font-family:
+    'ubuntu',
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  background-color: #ffffff;
+  background: var(--bg-body);
+  color: var(--text-main);
+}
+
+#app {
+  height: 100vh;
+}
+
+/* ===== Layout ===== */
+
+.app-shell {
+  height: 100%;
+  display: flex;
+}
+
+/* ---- Sidebar ---- */
+
+.sidebar {
+  width: 240px;
+  background: var(--bg-sidebar);
+  color: var(--text-invert);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 16px;
+}
+
+.sidebar-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 로고 영역 */
+
+.sidebar-logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.sidebar-logo-sub {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.sidebar-logo span {
+  color: var(--accent);
+}
+
+/* 구분선 (로고 아래 / 중간 등 필요할 때 사용) */
+
+.sidebar-divider {
+  height: 1px;
+  width: 100%;
+  margin: 12px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+}
+
+/* 전체 영역 3등분해서 사용하는 네비 */
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-zone {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  position: relative;
+  border-radius: 24px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.sidebar-label {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-invert);
+  font-size: 1.5rem;
+  text-align: center;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.sidebar-zone::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border-radius: 20px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.25) saturate(0.6);
+  opacity: 1;
+  transition:
+    transform 0.35s ease,
+    filter 0.25s ease;
+}
+
+.zone-logs::before {
+  background-image: url('./modbus_logo.png');
+}
+
+.zone-dobot::before {
+  background-image: url('./dobot_logo.png');
+}
+
+.zone-turtle::before {
+  background-image: url('./turtlebot_logo.png');
+}
+
+.sidebar-zone:hover::before {
+  transform: scale(1.5);
+  filter: brightness(0.45) saturate(1);
+}
+
+.sidebar-zone.active::before {
+  opacity: 0.65;
+}
+
+.sidebar-label {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 999px;
+  color: var(--text-invert);
+  font-size: 1.4rem;
+  text-align: center;
+  font-family: 'Ubuntu', system-ui, sans-serif;
+  transition: none;
+}
+
+/* ---- Main Area ---- */
+
+.main-area {
+  flex: 1;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar */
+
+.topbar {
+  height: 56px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar-title {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.topbar-right {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Content */
+
+.main-content {
+  flex: 1;
+  padding: 16px 24px 24px;
+  overflow: auto;
+}
+
+.content-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  padding: 16px 18px 18px;
+}
+
+/* ===== Sections / Titles ===== */
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.section-caption {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* ===== Buttons ===== */
+
+.btn-ghost {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #fff;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-main);
+}
+
+/* ===== Tables ===== */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.table thead tr {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.table th {
+  text-align: left;
+  padding: 8px 6px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid #eef1f7;
+}
+
+.table td {
+  padding: 8px 6px;
+}
+
+/* 상태 배지 */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: none;
+  outline: none;
+}
+
+.badge-info {
+  background: var(--log_delete-soft);
+  color: var(--log_delete);
+}
+
+.badge-warn {
+  background: rgba(255, 196, 87, 0.16);
+  color: #c88719;
+}
+
+.badge-danger {
+  background: rgba(255, 99, 99, 0.16);
+  color: #d83434;
+}
+
+/* 카드 내부에서 쓰는 작은 리스트 */
+
+.metric-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+
+.metric-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f2f7;
+}
+
+.metric-list li:last-child {
+  border-bottom: none;
+}
+
+.text-muted {
+  color: var(--text-muted);
 }

@@ -1,4 +1,4 @@
-from pymodbus.client import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient 
 from datetime import datetime
 
 class ModbusTCPClient:

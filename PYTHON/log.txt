@@ -1,0 +1,11 @@
+1,2025-12-10 23:55:01,INFO,Modbus,Client connected to Modbus server
+2,2025-12-10 23:55:03,INFO,Modbus,Read holding registers success
+3,2025-12-10 23:55:06,WARN,Dobot,Joint angle approaching limit
+4,2025-12-10 23:55:08,INFO,Dobot,Pick operation started
+5,2025-12-10 23:55:10,INFO,Dobot,Pick operation completed successfully
+6,2025-12-10 23:55:13,INFO,TurtleBot,Navigation goal received
+7,2025-12-10 23:55:15,WARN,TurtleBot,Obstacle detected too close
+8,2025-12-10 23:55:18,INFO,TurtleBot,Obstacle avoided successfully
+9,2025-12-10 23:55:21,ERROR,TurtleBot,Battery voltage dropped below threshold
+10,2025-12-10 23:55:25,INFO,System,Emergency state released by operator
+11,2025-12-10 23:55:25,INFO,System,Emergency state released by operator

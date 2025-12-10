@@ -1,93 +1,117 @@
 <template>
   <section>
-    <h2>Modbus Log Viewer</h2>
-    <p class="desc">pymodbus로 쌓이는 로그를 여기서 확인할 예정이야. 지금은 백엔드 mock 데이터 연동 상태.</p>
+    <div class="section-title-row">
+      <div>
+        <h2 class="section-title">Modbus Log</h2>
+         <p class="section-caption">
+          Update Cycle (2sec)
+        </p>
+      </div>
 
-    <button class="reload-btn" @click="fetchLogs">새로고침</button>
+      <!-- 로그 삭제 버튼 -->
+      <button
+        class="badge badge-danger badge-clickable"
+        type="button"
+        @click="clearLogs"
+        :disabled="deleting"
+      >
+        {{ deleting ? '삭제 중...' : '로그 삭제' }}
+      </button>
+    </div>
 
-    <table v-if="logs.length" class="log-table">
+    <table class="table" v-if="logs.length">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>시간</th>
-          <th>레벨</th>
-          <th>메시지</th>
+          <th>#</th>
+          <th>Timestamp</th>
+          <th>Level</th>
+          <th>Device</th>
+          <th>Message</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="log in logs" :key="log.id">
           <td>{{ log.id }}</td>
-          <td>{{ log.timestamp }}</td>
-          <td>{{ log.level }}</td>
+          <td>{{ log.time }}</td>
+          <td>
+            <span
+              class="badge"
+              :class="{
+                'badge-info': log.level === 'INFO',
+                'badge-warn': log.level === 'WARN',
+                'badge-danger': log.level === 'ERROR'
+              }"
+            >
+              {{ log.level }}
+            </span>
+          </td>
+          <td>{{ log.device }}</td>
           <td>{{ log.message }}</td>
         </tr>
       </tbody>
     </table>
 
-    <p v-else class="empty">표시할 로그가 없습니다.</p>
+    <p v-else class="text-muted">
+      표시할 로그가 없습니다.
+    </p>
   </section>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import api from '../services/api';
 
 const logs = ref([]);
+const deleting = ref(false);
+const pollingId = ref(null);
 
+// 로그 가져오기
 const fetchLogs = async () => {
   try {
-    const res = await api.get('/api/logs');
+    const res = await api.get('/logs');
     logs.value = res.data;
   } catch (err) {
     console.error('로그 불러오기 실패:', err);
+    alert('로그를 불러오는 중 오류가 발생했습니다.');
+  }
+};
+
+// 로그 삭제
+const clearLogs = async () => {
+  if (!confirm('정말 모든 로그를 삭제하시겠습니까?')) return;
+
+  deleting.value = true;
+  try {
+    await api.delete('/logs');
+    logs.value = [];
+  } catch (err) {
+    console.error('로그 삭제 실패:', err);
+    alert('로그 삭제 중 오류가 발생했습니다.');
+  } finally {
+    deleting.value = false;
   }
 };
 
 onMounted(() => {
   fetchLogs();
+  pollingId.value = setInterval(fetchLogs, 2000);
 });
+
+onUnmounted(() => {
+  if (pollingId.value) {
+    clearInterval(pollingId.value);
+  }
+});
+
 </script>
 
 <style scoped>
-h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.2rem;
-}
-
-.desc {
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.reload-btn {
-  margin-bottom: 0.75rem;
-  padding: 0.3rem 0.9rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #fafafa;
+.badge-clickable {
   cursor: pointer;
+  user-select: none;
 }
-
-.log-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9rem;
-}
-
-.log-table th,
-.log-table td {
-  border: 1px solid #e0e0e0;
-  padding: 0.4rem 0.6rem;
-}
-
-.log-table th {
-  background: #fafafa;
-  text-align: left;
-}
-
-.empty {
-  margin-top: 1rem;
-  color: #888;
+.badge-clickable:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 </style>

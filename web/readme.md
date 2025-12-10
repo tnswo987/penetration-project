@@ -1,27 +1,116 @@
+# Critical Thing
+
+### ì‘ì—…ì ê³µê°„ ----/---- ë¡œë´‡ ì‘ì—… ê³µê°„ ë¶„ë¦¬
+
+- Backend
+
+  index.js ìˆ˜ì •
+
+  ```js
+  const HOST = "0.0.0.0";
+  app.listen(PORT, HOST, () => {
+    console.log(`Backend listening on http://${HOST}:${PORT}`);
+  });
+  ```
+
+  - Windows í¬íŠ¸ í—ˆìš© check
+
+- Frontend
+
+  web/frontend/src/services/api.js ìˆ˜ì •
+
+  ```js
+  import axios from "axios";
+  const api = axios.create({
+    baseURL: "http://0.0.0.0:3000/api",
+  });
+  ```
+
 ## Frontend (Vue.js)
 
-    - Modbus Log ÅÇ ? pymodbus·Î ÀúÀåµÈ ·Î±× ¸®½ºÆ®
+- Modbus Log íƒ­ -> pymodbusë¡œ ì €ì¥ëœ ë¡œê·¸ ë¦¬ìŠ¤íŠ¸
 
-    - Dobot Sensor ÅÇ ? ¼¾¼­ °ª ±×·¡ÇÁ
+- Dobot Sensor íƒ­ -> ì„¼ì„œ ê°’ ê·¸ë˜í”„
 
-    - TurtleBot Monitor ÅÇ ? Àü·ù/Àü¾Ğ/¹èÅÍ¸® »óÅÂ ½Ç½Ã°£ °üÁ¦
+- TurtleBot Monitor íƒ­ -> ì „ë¥˜/ì „ì••/ë°°í„°ë¦¬ ìƒíƒœ ì‹¤ì‹œê°„ ê´€ì œ
 
-WebSocket(Socke.IO) + REST API·Î Node.js¿Í Åë½Å
+WebSocket(Socke.IO) + REST APIë¡œ Node.jsì™€ í†µì‹ 
 
 ## Backend (Node.js / Express)
 
 REST API
 
-GET /api/logs : ÀúÀåµÈ Modbus ·Î±× Á¶È¸
+GET /api/logs : ì €ì¥ëœ Modbus ë¡œê·¸ ì¡°íšŒ
 
-GET /api/dobot/history : Dobot ¼¾¼­ °ú°Å µ¥ÀÌÅÍ
+GET /api/dobot/history : Dobot ì„¼ì„œ ê³¼ê±° ë°ì´í„°
 
-GET /api/turtlebot/history : ¹èÅÍ¸®/Àü·ù °ú°Å µ¥ÀÌÅÍ
+GET /api/turtlebot/history : ë°°í„°ë¦¬/ì „ë¥˜ ê³¼ê±° ë°ì´í„°
 
 WebSocket (Socket.IO)
 
-    - modbus_log Ã¤³Î: »õ ·Î±×°¡ ½×ÀÏ ¶§¸¶´Ù push
+- modbus_log ì±„ë„: ìƒˆ ë¡œê·¸ê°€ ìŒ“ì¼ ë•Œë§ˆë‹¤ push
 
-    - dobot_sensor Ã¤³Î: ÁÖ±âÀûÀ¸·Î ¼¾¼­°ª push
+- dobot_sensor ì±„ë„: ì£¼ê¸°ì ìœ¼ë¡œ ì„¼ì„œê°’ push
 
-    - turtlebot_status Ã¤³Î: ROS ÅäÇÈ µ¥ÀÌÅÍ push
+- turtlebot_status ì±„ë„: ROS í† í”½ ë°ì´í„° push
+
+---
+
+## 1. Modbus Log íƒ­
+
+```
+
+Log_id - Timestamp - Level - Device - Message
+
+ex)
+
+1,2025-12-10 23:55:01,INFO,Modbus,Client connected to Modbus server
+2,2025-12-10 23:55:03,INFO,Modbus,Read holding registers success
+3,2025-12-10 23:55:06,WARN,Dobot,Joint angle approaching limit
+4,2025-12-10 23:55:08,INFO,Dobot,Pick operation started
+5,2025-12-10 23:55:10,INFO,Dobot,Pick operation completed successfully
+6,2025-12-10 23:55:13,INFO,TurtleBot,Navigation goal received
+7,2025-12-10 23:55:15,WARN,TurtleBot,Obstacle detected too close
+8,2025-12-10 23:55:18,INFO,TurtleBot,Obstacle avoided successfully
+9,2025-12-10 23:55:21,ERROR,TurtleBot,Battery voltage dropped below threshold
+10,2025-12-10 23:55:25,INFO,System,Emergency state released by operator
+
+```
+
+---
+
+---
+
+| Log_id | Timestamp           | Level | Device    | Message                                 |
+| ------ | ------------------- | ----- | --------- | --------------------------------------- |
+| 1      | 2025-12-10 23:55:01 | INFO  | Modbus    | Client connected to Modbus server       |
+| 2      | 2025-12-10 23:55:03 | INFO  | Modbus    | Read holding registers success          |
+| 3      | 2025-12-10 23:55:06 | WARN  | Dobot     | Joint angle approaching limit           |
+| 4      | 2025-12-10 23:55:08 | INFO  | Dobot     | Pick operation started                  |
+| 5      | 2025-12-10 23:55:10 | INFO  | Dobot     | Pick operation completed successfully   |
+| 6      | 2025-12-10 23:55:13 | INFO  | TurtleBot | Navigation goal received                |
+| 7      | 2025-12-10 23:55:15 | WARN  | TurtleBot | Obstacle detected too close             |
+| 8      | 2025-12-10 23:55:18 | INFO  | TurtleBot | Obstacle avoided successfully           |
+| 9      | 2025-12-10 23:55:21 | ERROR | TurtleBot | Battery voltage dropped below threshold |
+| 10     | 2025-12-10 23:55:25 | INFO  | System    | Emergency state released by operator    |
+
+---
+
+### Level ë¶„ë¥˜ ê¸°ì¤€
+
+---
+
+| level | ì˜ë¯¸                                |
+| ----- | ----------------------------------- |
+| INFO  | ì •ìƒ ë™ì‘                           |
+| WARN  | ì£¼ì˜ í•„ìš” (ê³§ ë¬¸ì œ ê°€ëŠ¥ì„±)          |
+| ERROR | ì¦‰ì‹œ ì¡°ì¹˜ í•„ìš”                      |
+| FATAL | ì‹œìŠ¤í…œ ì¤‘ë‹¨ ìˆ˜ì¤€ (ë‚˜ì¤‘ì— ì¶”ê°€ ê°€ëŠ¥) |
+
+```
+
+```
+
+```
+
+```
