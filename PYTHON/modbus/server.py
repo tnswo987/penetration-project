@@ -16,10 +16,10 @@ class ModbusTCPServer:
         log.setLevel(logging.DEBUG)
         
         self.store = ModbusSlaveContext(
-            di = ModbusSequentialDataBlock(0, [0]*1),
-            co = ModbusSequentialDataBlock(0, [0]*5),
-            ir = ModbusSequentialDataBlock(0, [0]*1),
-            hr = ModbusSequentialDataBlock(0, [0]*65530),
+            di = ModbusSequentialDataBlock(0, [0]*10),
+            co = ModbusSequentialDataBlock(0, [0]*10),
+            ir = ModbusSequentialDataBlock(0, [0]*10),
+            hr = ModbusSequentialDataBlock(0, [0]*10),
         )
         
         self.context = ModbusServerContext(slaves={1: self.store}, single=False)

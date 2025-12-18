@@ -1,6 +1,7 @@
 import numpy as np
-# import torch
-# import torch.nn as nn
+import torch
+# PyTorch에서 신경망을 만들기 위한 모든 레이어, 활성화 함수, 구조를 제공하는 모듈
+import torch.nn as nn
 import matplotlib.pyplot as plt
 
 # 정상 IMU 데이터 생성
@@ -46,6 +47,34 @@ def create_windows(data, window_size=50):
     
     return np.array(windows)
 
+class IMUAutoEncoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+        self.encoder = nn.Sequential(
+            nn.Linear(50*6, 128),
+            nn.ReLU(),
+            nn.Linear(128, 32),
+            nn.ReLU(),
+            nn.Linear(32, 8),
+        )
+        
+        self.decoder = nn.Sequential(
+            nn.Linear(8, 32),
+            nn.ReLU(),
+            nn.Linear(32, 128),
+            nn.ReLU(),
+            nn.Linear(128, 50*6),
+        )
+    
+    def forward(self, x):
+        # x.size(0) = batch size
+        
+        x = x.view(x.size(0), -1)
+        z = self.encoder(x)
+        out = self.decoder(z)
+        
+        return out.view(x.size(0), 50, 6)
 
 normal_data = generate_normal_data()
 abnormal_data = generate_abnormal_data()
@@ -53,4 +82,32 @@ abnormal_data = generate_abnormal_data()
 normal_windows = create_windows(normal_data)
 abnormal_windows = create_windows(abnormal_data)
 
+normal_tensor = torch.tensor(normal_windows, dtype=torch.float32)
+abnormal_tensor = torch.tensor(abnormal_windows, dtype=torch.float32)
 
+model = IMUAutoEncoder()
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+epochs = 20
+for epoch in range(epochs):
+    optimizer.zero_grad()
+    output = model(normal_tensor)
+    loss = criterion(output, normal_tensor)
+    loss.backward()
+    optimizer.step()
+    print(f"Epoch {epoch+1}/{epochs}  Loss: {loss.item():.6f}")
+
+with torch.no_grad():
+    recon = model(normal_tensor)
+    loss_per_window = ((recon - normal_tensor)**2).mean(dim=(1,2))
+
+threshold = loss_per_window.mean() + 3*loss_per_window.std()
+print("Anomaly threshold =", threshold.item())
+
+with torch.no_grad():
+    abnormal_recon = model(abnormal_tensor)
+    abnormal_loss = ((abnormal_recon - abnormal_tensor)**2).mean(dim=(1,2))
+
+detections = abnormal_loss > threshold
+print("Detected abnormal windows:", detections.sum().item(), "/", len(detections))

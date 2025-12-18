@@ -3,14 +3,12 @@ from uart.uart import uart
 from vision.vision import RealSenseColorDetector
 from modbus.client import ModbusTCPClient
 from transform.transform import HandEyeCalibrator
+from debug.logger import Logger
 import cv2
 import threading
 import time
+logger = Logger("log.txt")
 ##########MEMO#################
-'''
-1. FINISH_PROCESS 부분에서 HOMING EMERGENCY 가능한지 CHECK
-2. TURTLEBOT3 EMERGENCY 구현해야된다.
-'''
 ###############################
 '''
 시작 대기 : WAIT_START
@@ -40,14 +38,16 @@ FINISH_PROCESS_FLAG = False
 CLASSIFY_OBJECT_FLAG = False
 EMERGENCY_FLAG = False
 CONVEYOR_FLAG = False
+DETECT_YELLOW_FLAG = False
+TURTLEBOT_BUSY_FLAG = False
 
 # -------------- DOBOT VAR --------------
 HOME_POS = [209.75, 0, 99.96, 0]
 PICK_POS = None
 SORT_POS = {
-    "RED":     [], # 실측해서 넣자.
-    "GREEN":   [], # 실측해서 넣자.
-    "BLUE":    [], # 실측해서 넣자.
+    "RED":     [152.29, 222.28, 33.36, 55.53], # 실측해서 넣자.
+    "GREEN":   [152.29, 222.28, 33.36, 55.53], # 실측해서 넣자.
+    "BLUE":    [152.29, 222.28, 33.36, 55.53], # 실측해서 넣자.
 }
 step = 0
 move_sent = False
@@ -62,93 +62,91 @@ last_detected_color = None
 
 # -------------- TURTLE VAR --------------
 yellow_cnt = 0
-turtlebot_busy = False
 
 # ------------- EMERGENCY VAR -------------
-temp = None
-conveyor_temp = None
+conveyor_temp = False
 cnt = 0
 
 # ------------ Transformer VAR ------------
 CALIB_CAM_POINTS = [
-    (220, 134, 339.00),
-    (289, 117, 339.00),
-    (450, 120, 338.00),
-    (141,  62, 341.00),
-    (235,  61, 340.00),
-    (324, 181, 336.00),
-    (463, 182, 335.00),
-    (512, 120, 337.00),
+    (295, 117, 333),
+    (216, 189, 335),
+    (338, 104, 330),
+    (413, 166, 328),
+    (222, 125, 336),
+    (193, 184, 336),
+    (328, 179, 330),
+    (440, 182, 326),
 ]
 CALIB_ROBOT_POINTS = [
-    (195.84, -240.59, 19.89),
-    (188.46, -199.43, 22.12),
-    (192.61, -108.00, 16.92),
-    (154.44, -285.33, 20.71),
-    (155.51, -229.09, 22.12),
-    (224.84, -180.33, 23.46),
-    (229.48, -100.59, 22.97),
-    (192.05,  -70.36, 22.96),
+    (175.61, -76.88, 28.46),
+    (214.46, -121.17, 20.34),
+    (169.48, -52.67, 31.51),
+    (207.84, -12.8, 28.79),
+    (180.6, -120.45, 21.58),
+    (208.48, -135.32, 20.15),
+    (212.02, -59.71, 30.05),
+    (213.31, 2.74, 31.24),
 ]
 
 # ---------- SETUP FUNCTIONS ----------
 def initialize_modbus():
     client = ModbusTCPClient('192.168.110.101', 20000)
     client.connect()
-    client.write_log("[MODBUS] 서버와의 연결이 완료되었습니다.")
-    print("[MODBUS] 서버와의 연결이 완료되었습니다.")
+    logger.mlog("INFO", "MODBUS", "Connected to Modbus server")
     return client
 
-def initialize_robot(client):
+def initialize_robot():
     robot = dobot('COM6')
     robot.connect()
-    robot.home()
-    client.write_log("[DOBOT] 장치 연결이 완료되었습니다.")
-    print("[DOBOT] 장치 연결이 완료되었습니다.")
+    logger.mlog("INFO", "DOBOT", "Connected to Dobot")
+    robot.w_home()
+    logger.mlog("INFO", "DOBOT", "Dobot homing completed")
     return robot
 
-def initialize_uart(client):
+def initialize_uart():
     comm = uart('COM4', 9600)
-    client.write_log("[UART] 장치 연결이 완료되었습니다.")
-    print("[UART] 장치 연결이 완료되었습니다.")
+    logger.mlog("INFO", "UART", "Connected to STM32 via UART")
     return comm
 
-def initialize_vision(client):
-    vision = RealSenseColorDetector(roi_area=(230, 280, 425, 475))
-    client.write_log("[D435i] 장치 연결이 완료되었습니다.")
-    print("[D435i] 장치 연결이 완료되었습니다.")
+def initialize_vision():
+    vision = RealSenseColorDetector(roi_area=(75, 240, 115, 170))
+    logger.mlog("INFO", "D435i", "Connected to D435i")
     return vision
 
 def initialize_transformer(vision):
     transformer = HandEyeCalibrator(vision.intr)
     transformer.calibrate(CALIB_CAM_POINTS, CALIB_ROBOT_POINTS)
-
+    logger.mlog("INFO", "SYSTEM", "Coordinate transformation ready")
     return transformer
 
 # ---------- STATE FUNCTIONS ----------
 def wait_start_func():
     global START_PROCESS_FLAG
-    
+    logger.mlog("INFO", "SYSTEM", "STATE = WAIT_START")
     while True:
+        # 공정 시작 신호가 들어왔다면
         if START_PROCESS_FLAG:
-            client.write_log("[SYSTEM] 공정 시작")
-            print("[SYSTEM] 공정 시작")
             START_PROCESS_FLAG = False
             return "START_PROCESS"
-                
+
         yield
 
 def start_process_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = START_PROCESS")
     global CONVEYOR_FLAG
     client.conveyor_on()
     CONVEYOR_FLAG = True
+    logger.mlog("INFO", "CONVEYOR", "ON")
     yield
     return "DETECT_OBJECT"
 
 def detect_object_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = DETECT_OBJECT")
     global last_detected_color
     global yellow_cnt
-    global turtlebot_busy
+    global DETECT_YELLOW_FLAG
+    global TURTLEBOT_BUSY_FLAG
     global CONVEYOR_FLAG
     global PICK_POS
     
@@ -158,46 +156,55 @@ def detect_object_func():
         
         if view is not None:
             cv2.imshow("D435i", view)
+            # 화면 갱신
             cv2.waitKey(1)
         yield
 
+        # 검출된 색이 있으면서, 동시에 검출된 색이 노란색이 아닐 때
         if detected_color and detected_color != "YELLOW":
+            logger.mlog("INFO", "D435i", f"Detected color : {detected_color}")
             client.conveyor_off()
             CONVEYOR_FLAG = False
-            client.write_log(f"[D435i] {detected_color} 탐지")
-            print(f"[D435i] {detected_color} 탐지")
+            logger.mlog("INFO", "CONVEYOR", "OFF")
             last_detected_color = detected_color
-            
             if u is not None and v is not None and depth is not None and depth > 0:
+                # PICK_POS 계산
                 PICK_POS = transformer.d435i_to_dobot(u, v, depth)
             
             else:
                 continue
             
             comm.send(COLOR_CODE[detected_color])
+            logger.mlog("INFO", "UART", f"Send({COLOR_CODE[detected_color]})")
             return "WAIT_CLASSIFY"
         
+        # 검출된 색이 노란색이라면
         elif detected_color == "YELLOW":
-            if turtlebot_busy:
-                yield
-                continue
-            
-            yellow_cnt += 1
-            client.write_log(f"[D435i] YELLOW : {yellow_cnt}")
-            print(f"[D435i] YELLOW : {yellow_cnt}")
+            if not DETECT_YELLOW_FLAG:
+                logger.mlog("INFO", "D435i", f"Detected color : {detected_color}")
+                yellow_cnt += 1
+                DETECT_YELLOW_FLAG = True
             
             if yellow_cnt >= 3:
-                yellow_cnt = 0
-                threading.Thread(target=delayed_turtlebot_start).start()
-            
+                if not TURTLEBOT_BUSY_FLAG:
+                    yellow_cnt = 0
+                    # 출발 예약 (방어코드)
+                    TURTLEBOT_BUSY_FLAG = True
+                    threading.Thread(
+                        target=start_turtlebot,
+                        daemon=True
+                    ).start()
             yield
             continue
         
+        # 검출된 색이 없다면
         else:
+            DETECT_YELLOW_FLAG = False
             yield
             continue
 
 def wait_classify_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = WAIT_CLASSIFY")
     global CLASSIFY_OBJECT_FLAG
     
     while True:
@@ -208,78 +215,147 @@ def wait_classify_func():
         yield
       
 def classify_object_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = CLASSIFY_OBJECT")
     global step
     global move_sent
     step = 0
     move_sent = False
     
-    client.write_log("[DOBOT] 분류 작업을 시작합니다.")
-    print("[DOBOT] 분류 작업을 시작합니다.")
+    PICK_WAY_POS = [PICK_POS[0], PICK_POS[1], PICK_POS[2] + 50, 0]
+    sort_pos = SORT_POS[last_detected_color]
+    sort_way_pos = [sort_pos[0], sort_pos[1], sort_pos[2] + 50, 0]
     
-    WAY_POS = [PICK_POS[0], PICK_POS[1], PICK_POS[2] + 50, PICK_POS[3]]
+    suction_on_time = None
+    
+    # Home → PICK_WAY_POS → PICK_POS → SUCTION → PICK_WAY_POS → Home → SORT_WAY_POS → SORT_POS → DROP → SORT_WAY_POS → NEXT_STATE 
     while True:
+        # Home
         if step == 0:
             if not move_sent:
-                robot.move(*WAY_POS)
+                robot.moveJ(*HOME_POS)
+                logger.mlog("INFO", "DOBOT", "Moving to home")
                 move_sent = True
             
-            if robot.is_reached(WAY_POS):
+            if robot.is_reached(HOME_POS):
                 step = 1
                 move_sent = False
             yield
             
+        # PICK_WAY_POS
         if step == 1:
             if not move_sent:
-                robot.move(*PICK_POS)
+                robot.moveJ(*PICK_WAY_POS)
+                logger.mlog("INFO", "DOBOT", "Moving to pick_way_pos")
+                move_sent = True
+            
+            if robot.is_reached(PICK_WAY_POS):
+                step = 2
+                move_sent = False
+            yield
+            
+        # PICK_POS    
+        if step == 2:
+            if not move_sent:
+                robot.moveL(*PICK_POS)
+                logger.mlog("INFO", "DOBOT", "Moving to pick_pos")
                 move_sent = True
                 
             if robot.is_reached(PICK_POS):
-                step = 2
-                move_sent = False 
-            yield
-        
-        if step == 2:
-            robot.suction(1)
-            time.sleep(1)
-            step = 3
-            yield
-            
-        if step == 3:
-            if not move_sent:
-                robot.move(*WAY_POS)
-                move_sent = True
-            
-            if robot.is_reached(WAY_POS):
-                step = 4
+                step = 3
                 move_sent = False
             yield
+        
+        # SUCTION
+        if step == 3:
+            if suction_on_time is None:
+                robot.suction(1)
+                logger.mlog("INFO", "DOBOT", "Suction")
+                suction_on_time = time.time()
             
+            if (time.time() - suction_on_time) >= 1.0:
+                suction_on_time = None
+                step = 4
+            yield
+
+        # PICK_WAY_POS
         if step == 4:
             if not move_sent:
-                sort_pos = SORT_POS[last_detected_color]
-                robot.move(*sort_pos)
+                robot.moveL(*PICK_WAY_POS)
+                logger.mlog("INFO", "DOBOT", "Moving to pick_way_pos")
                 move_sent = True
             
-            if robot.is_reached(sort_pos):
+            if robot.is_reached(PICK_WAY_POS):
                 step = 5
                 move_sent = False
             yield
-            
+        
+        # Home
         if step == 5:
-            robot.suction(0)
-            step = 6
+            if not move_sent:
+                robot.moveJ(*HOME_POS)
+                logger.mlog("INFO", "DOBOT", "Moving to home")
+                move_sent = True
+            
+            if robot.is_reached(HOME_POS):
+                step = 6
+                move_sent = False
             yield
         
+        # SORT_WAY_POS
         if step == 6:
+            if not move_sent:
+                robot.moveJ(*sort_way_pos)
+                logger.mlog("INFO", "DOBOT", "Moving to sort_way_pos")
+                move_sent = True
+            
+            if robot.is_reached(sort_way_pos):
+                step = 7
+                move_sent = False
+            yield
+        
+        # SORT_POS
+        if step == 7:
+            if not move_sent:
+                robot.moveL(*sort_pos)
+                logger.mlog("INFO", "DOBOT", "Moving to sort_pos")
+                move_sent = True
+            
+            if robot.is_reached(sort_pos):
+                step = 8
+                move_sent = False
+            yield
+        
+        # DROP
+        if step == 8:
+            robot.suction(0)
+            logger.mlog("INFO", "DOBOT", "Drop")
+            step = 9
+            yield
+        
+        # SORT_WAY_POS
+        if step == 9:
+            if not move_sent:
+                robot.moveL(*sort_way_pos)
+                logger.mlog("INFO", "DOBOT", "Moving to sort_way_pos")
+                move_sent = True
+            
+            if robot.is_reached(sort_way_pos):
+                step = 10
+                move_sent = False
+            yield
+            
+        # NEXT_STATE
+        if step == 10:
+            logger.mlog("INFO", "DOBOT", "Classification task completed")
             return "COMPLETE_TASK"
             
 def complete_task_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = COMPLETE_TASK")
     global FINISH_PROCESS_FLAG
     global CONVEYOR_FLAG
     comm.send("000")
-    client.write_log("[DOBOT] 분류 작업을 완료하였습니다.")
-    print(f"[DOBOT] 분류 작업을 완료하였습니다.")
-        
+    logger.mlog("INFO", "UART", "Send(000)")
+
     yield
     
     if FINISH_PROCESS_FLAG:
@@ -289,126 +365,97 @@ def complete_task_func():
     else:
         client.conveyor_on()
         CONVEYOR_FLAG = True
+        logger.mlog("INFO", "CONVEYOR", "ON")
         return "DETECT_OBJECT"
 
 def finish_process_func():
+    logger.mlog("INFO", "SYSTEM", "STATE = FINISH_PROCESS")
+    global START_PROCESS_FLAG
+    global FINISH_PROCESS_FLAG
     global step
     global move_sent
     step = 0
     move_sent = False
     
-    client.write_log("[SYSTEM] 공정 종료")
-    print("[SYSTEM] 공정 종료")
-    
     while True:
         if step == 0:
             if not move_sent:
                 robot.home()
+                logger.mlog("INFO", "DOBOT", "Moving to home")
                 move_sent = True
                 
             if robot.is_reached(HOME_POS):
                 step = 1
-                move_sent = False 
+                move_sent = False
             yield
             
         if step == 1:
             cv2.destroyWindow("D435i")
-            client.export_logs()
+            START_PROCESS_FLAG = False
+            FINISH_PROCESS_FLAG = False
             return "WAIT_START"
 
 # ---------- THREAD FUNCTIONS ----------
 def stm32_listener():
-    print("[UART] STM32 수신 스레드를 시작합니다.")
-    
     global START_PROCESS_FLAG
     global FINISH_PROCESS_FLAG
     global CLASSIFY_OBJECT_FLAG
     global EMERGENCY_FLAG
     global CONVEYOR_FLAG
-    global step
-    global temp
-    global conveyor_temp
-    global cnt
     
     while True:
         receive_data = comm.receive()
         
         if receive_data:
             if receive_data == "110":
-                if NOW_STATE == "WAIT_START":
-                    client.write_log("[UART] STM32로부터 START_PROCESS(110) 신호를 수신했습니다.")
-                    print("[UART] STM32로부터 START_PROCESS(110) 신호를 수신했습니다.")
+                if NOW_STATE == "WAIT_START" and not EMERGENCY_FLAG:
+                    logger.mlog("INFO", "UART", "Receive(110)")
                     START_PROCESS_FLAG = True
             
             elif receive_data == "100":
-                if NOW_STATE != "WAIT_START":
-                    client.write_log("[UART] STM32로부터 FINISH_PROCESS(100) 신호를 수신했습니다.")
-                    print("[UART] STM32로부터 FINISH_PROCESS(100) 신호를 수신했습니다.")
+                if NOW_STATE != "WAIT_START" and NOW_STATE != "FINISH_PROCESS" and not EMERGENCY_FLAG:
+                    logger.mlog("INFO", "UART", "Receive(110)")
                     FINISH_PROCESS_FLAG = True
+    
                     
             elif receive_data == "101":
-                client.write_log("[UART] STM32로부터 CLASSIFY_OBJECT(101) 신호를 수신했습니다.")
-                print("[UART] STM32로부터 CLASSIFY_OBJECT(101) 신호를 수신했습니다.")
+                logger.mlog("INFO", "UART", "Receive(101)")
                 CLASSIFY_OBJECT_FLAG = True
             
             elif receive_data == "111":
-                client.write_log("[UART] STM32로부터 EMERGENCY_ON(111) 신호를 수신했습니다.")
-                print("[UART] STM32로부터 EMERGENCY_ON(111) 신호를 수신했습니다.")
-                temp = step
-                conveyor_temp = CONVEYOR_FLAG
+                logger.mlog("INFO", "UART", "Receive(111)")
+                logger.mlog("WARN", "SYSTEM", "EMERGENCY ON")
+                client.emergency_on()
                 EMERGENCY_FLAG = True
-                client.turtlebot_emergency_on()
             
             elif receive_data == "000":
-                client.write_log("[UART] STM32로부터 EMERGENCY_OFF(000) 신호를 수신했습니다.")
-                print("[UART] STM32로부터 EMERGENCY_OFF(000) 신호를 수신했습니다.")
-                step = temp
-                cnt = 0
-                if conveyor_temp:
-                    client.conveyor_on()
-                    CONVEYOR_FLAG = True
-                else:
-                    client.conveyor_off()
-                    CONVEYOR_FLAG = False
-                conveyor_temp = None
+                logger.mlog("INFO", "UART", "Receive(000)")
+                logger.mlog("WARN", "SYSTEM", "EMERGENCY OFF")
+                client.emergency_off()
                 EMERGENCY_FLAG = False
-                client.turtlebot_emergency_off()
                     
         time.sleep(0.01)
 
-def delayed_turtlebot_start():
-    global turtlebot_busy
-    
-    DELAY_TIME = 1.5
-    time.sleep(DELAY_TIME)
-    
-    client.turtlebot_start()
-    print("[TURTLE] TURTLEBOT 출발")
-    client.write_log("[TURTLE] TURTLEBOT 출발")
-    turtlebot_busy = True
-
-def turtlebot_monitor():
-    global turtlebot_busy
-    
+def monitor_turtlebot():
+    global TURTLEBOT_BUSY_FLAG
     while True:
-        result = client.read_turtlebot_status()
+        TURTLEBOT_BUSY_FLAG = client.is_turtlebot_busy()
+        time.sleep(0.01)
         
-        if result == False and turtlebot_busy == True:
-            turtlebot_busy = False
-            print("[TURTLE] TURTLEBOT 복귀")
-            client.write_log("[TURTLE] TURTLEBOT 복귀")
-        
-        time.sleep(0.1)
-# -------------- MAIN --------------
+def start_turtlebot():
+    time.sleep(2)
+    client.send_start_mission()
+    logger.mlog("INFO", "TURTLEBOT", "Navigation started")
+# -------------- MAIN --------------``
 client = initialize_modbus()
-robot = initialize_robot(client)
-comm = initialize_uart(client)
-vision = initialize_vision(client)
+robot = initialize_robot()
+comm = initialize_uart()
+vision = initialize_vision()
 transformer = initialize_transformer(vision)
-    
+
 t1 = threading.Thread(target=stm32_listener)
 t1.start()
-t2 = threading.Thread(target=turtlebot_monitor)
+t2 = threading.Thread(target=monitor_turtlebot)
 t2.start()
 
 STATE_FUNCTIONS = {
@@ -424,35 +471,43 @@ STATE_FUNCTIONS = {
 current = STATE_FUNCTIONS[NOW_STATE]()
 
 while True:
-    if EMERGENCY_FLAG and cnt == 0:
-        robot.stop()
-        robot.clear()
-        client.conveyor_off()
-        CONVEYOR_FLAG = False
-        cnt += 1
-        move_sent = False
-        time.sleep(0.01)
-        continue
-        
-    if EMERGENCY_FLAG and cnt == 1:
-        robot.start()
-        cnt += 1
-        time.sleep(0.01)
-        continue
-    
-    if EMERGENCY_FLAG and cnt > 1:
-        time.sleep(0.01)
-        continue
-    
+    if EMERGENCY_FLAG:
+        if NOW_STATE == "CLASSIFY_OBJECT" or NOW_STATE == "FINISH_PROCESS":
+            if cnt == 0:
+                robot.stop()
+                robot.clear()
+                robot.start()
+                logger.mlog("WARN", "DOBOT", "STOP")
+                cnt += 1
+                move_sent = False
+                time.sleep(0.01)
+                continue
+            else:
+                time.sleep(0.01)
+                continue
+        else:
+            # 컨베이어가 켜져 있었다면
+            if CONVEYOR_FLAG:
+                client.conveyor_off()
+                CONVEYOR_FLAG = False
+                logger.mlog("INFO", "CONVEYOR", "OFF")
+            time.sleep(0.01)
+            continue
+            
     try:
+        # EMERGENCY CNT 원복
+        cnt = 0
+        # 컨베이어 상태 원복
+        if conveyor_temp == True and CONVEYOR_FLAG == False:
+            client.conveyor_on()
+            CONVEYOR_FLAG = True
+            logger.mlog("INFO", "CONVEYOR", "ON")
         next(current)
         
     except StopIteration as e:
         NOW_STATE = e.value
         current = STATE_FUNCTIONS[NOW_STATE]()
-            
+    
+    # 컨베이어 상태 저장
+    conveyor_temp = CONVEYOR_FLAG
     time.sleep(0.01)
-
-
-
-

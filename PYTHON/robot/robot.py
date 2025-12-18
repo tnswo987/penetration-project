@@ -13,10 +13,16 @@ class dobot:
 
     def home(self):
         self.device.set_homecmd(self.port, is_queued=True, is_wait=False)
-
-    def move(self, pos_x, pos_y, pos_z, pos_r):
+    
+    def w_home(self):
+        self.device.set_homecmd(self.port, is_queued=True, is_wait=True)
+        
+    def moveL(self, pos_x, pos_y, pos_z, pos_r):
         self.device.set_ptpcmd(self.port, ptp_mode=2, x=pos_x, y=pos_y, z=pos_z, r=pos_r, is_queued=True, is_wait=False)
     
+    def moveJ(self, pos_x, pos_y, pos_z, pos_r):
+        self.device.set_ptpcmd(self.port, ptp_mode=1, x=pos_x, y=pos_y, z=pos_z, r=pos_r, is_queued=True, is_wait=False)
+        
     def suction(self, state):
         if state == 1:
             self.device.set_endeffector_suctioncup(self.port, enable=True, on=True)
