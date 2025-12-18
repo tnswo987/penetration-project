@@ -13,8 +13,10 @@ MODBUS_HOST = "127.0.0.1"
 MODBUS_PORT = 20000
 MODBUS_UNIT_ID = 1
 
-COIL_START_MISSION = 1   # 출발 명령(ON)
-COIL_EMERGENCY     = 2   # 비상(ON), 해제(OFF)
+# 출발 명령(ON)
+COIL_START_MISSION = 1
+# 비상(ON), 해제(OFF)
+COIL_EMERGENCY     = 2
 
 start_mission_flag = False
 emergency_flag = False
@@ -25,9 +27,21 @@ modbus_lock = threading.Lock()
 modbus_client = None
 
 WORK_ROUTE = {
-    "work_target": [3.67, 2.22, 0.00247, 1.0],
-    "work_init": [-0.17, 0.00495, 0.14, 1.0],
+        "work_init": [
+        -1.96, -0.497, 0.076,
+        0.9999676506991817
+    ],
+    "work_target": [
+        1.77, 0.601, -0.00137,
+        0.9999676506991817
+    ],
 }
+
+# 초기 실제 값
+# WORK_ROUTE = {
+#     "work_target": [3.67, 2.22, 0.00247, 1.0],
+#     "work_init": [-0.17, 0.00495, 0.14, 1.0],
+# }
 
 UNLOADING_SECONDS = 10
 
@@ -66,13 +80,16 @@ def modbus_polling_thread():
 
     while modbus_running:
         try:
-            rr = read_coils_safe(COIL_START_MISSION, 2)  # coil1~2 읽기
+            # coil1~2 읽기
+            rr = read_coils_safe(COIL_START_MISSION, 2)
             if rr.isError():
                 print("[MODBUS] Read error:", rr)
             else:
                 bits = rr.bits
-                start_mission_flag = bool(bits[0])  # coil1
-                emergency_flag = bool(bits[1])      # coil2
+                # coil1
+                start_mission_flag = bool(bits[0])
+                # coil2
+                emergency_flag = bool(bits[1])
 
         except Exception as e:
             print("[MODBUS] Exception while reading:", e)
@@ -110,7 +127,7 @@ def pause_and_resume_if_emergency(navigator, current_goal_pose):
 
     navigator.goToPose(current_goal_pose)
 
-def run_navigation_with_pause(navigator, goal_pose):
+def run_navigation_with_pause(navigator, goal_pose, publish_ui_cb=None, moving_text=""):
     """
     goal_pose로 이동을 진행하되,
     이동 중 emergency ON이면 정지/대기/재개 수행.
@@ -118,6 +135,10 @@ def run_navigation_with_pause(navigator, goal_pose):
     navigator.goToPose(goal_pose)
 
     while not navigator.isTaskComplete():
+
+        if publish_ui_cb:
+            publish_ui_cb(moving_text, emergency_flag, 0)
+        
         pause_and_resume_if_emergency(navigator, goal_pose)
         time.sleep(0.1)
 
@@ -177,7 +198,7 @@ def main():
             if state == STATE_WAIT:
 
                 # ROS Topic Publish
-                publish_ui("work init에서 대기중", emergency_flag, 0)
+                publish_ui("초기 위치에서 대기", emergency_flag, 0)
 
                 mission_active = False
 
@@ -199,10 +220,10 @@ def main():
             # ------------- GO_TARGET -------------
             elif state == STATE_GO_TARGET:
                 # ROS Topic Publish
-                publish_ui("work target으로 출발", emergency_flag, 0)
+                publish_ui("목표 지점으로 이동", emergency_flag, 0)
                 
                 print("[MAIN] Going to target pose...")
-                result = run_navigation_with_pause(navigator, target_pose)
+                result = run_navigation_with_pause(navigator, target_pose, publish_ui_cb=publish_ui, moving_text="work target으로 이동중")
                 print(f"[MAIN] Target navigation finished: {result}")
 
                 if result == TaskResult.SUCCEEDED:
@@ -221,27 +242,24 @@ def main():
                 if emergency_flag:
                     print("[MAIN] Emergency ON during work-wait -> pause timer and wait.")
                     # ROS Topic Publish
-                    publish_ui("work target에서 대기중(비상정지)", True, wait_remaining)
+                    publish_ui("목표 지점에서 박스 하차", True, wait_remaining)
                     wait_emergency_clear()
                     print("[MAIN] Emergency OFF -> resume work-wait timer.")
 
                 if wait_remaining > 0:
                     # ROS Topic Publish
-                    publish_ui("work target에서 10초 대기중", emergency_flag, wait_remaining)
+                    publish_ui("목표 지점에서 박스 하차", emergency_flag, wait_remaining)
                     print(f"[MAIN] Work-wait... remaining: {wait_remaining}s")
                     time.sleep(1.0)
                     wait_remaining -= 1
                 else:
-                    # ROS Topic Publish
-                    publish_ui("work target 대기 완료", emergency_flag, 0)
                     state = STATE_GO_HOME
 
             # ------------- GO_HOME -------------
             elif state == STATE_GO_HOME:
-                # ROS Topic Publish
-                publish_ui("work init으로 복귀", emergency_flag, 0)
+                publish_ui("초기 위치로 복귀", emergency_flag, 0)
                 print("[MAIN] Returning to init pose...")
-                result = run_navigation_with_pause(navigator, init_pose)
+                result = run_navigation_with_pause(navigator, init_pose, publish_ui_cb=publish_ui, moving_text="work init으로 복귀")
                 print(f"[MAIN] Home navigation finished: {result}")
 
                 # 요구사항: HOME 복귀 완료 후 coil1 OFF 기록

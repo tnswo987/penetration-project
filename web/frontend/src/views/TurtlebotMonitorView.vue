@@ -19,7 +19,6 @@
           <div class="content-card tb-card">
             <div class="tb-card-header">
               <span>Battery</span>
-              <span class="text-muted">잔량 · 전압</span>
             </div>
 
             <div class="bar-row">
@@ -57,7 +56,6 @@
           <div class="content-card tb-card">
             <div class="tb-card-header">
               <span>Motion</span>
-              <span class="text-muted">속도 · 방향</span>
             </div>
 
             <div class="bar-row">
@@ -92,7 +90,6 @@
           <div class="content-card tb-card">
             <div class="tb-card-header">
               <span>Navigation</span>
-              <span class="text-muted">mission · emergency</span>
             </div>
 
             <div class="bar-row">
@@ -105,7 +102,7 @@
             <div class="bar-row">
               <div class="bar-label">
                 <span>Emergency</span>
-                <span class="text-muted">{{ nav.emergency ? "걸림" : "안걸림" }}</span>
+                <span :class="nav.emergency ? 'emergency_on' : 'text-muted'">{{ nav.emergency ? "On" : "Off" }}</span>
               </div>
             </div>
 
@@ -164,11 +161,10 @@ function minBar(pct, min = 4) {
 /* ===============================
  * Config
  * =============================== */
-// Vite public 폴더는 "/public/xxx"가 아니라 "/xxx" 로 접근
 const mapUrl = "public/maps/final.png";
 const MAP_YAML_URL = "public/maps/final.yaml";
 const ROSBRIDGE_URL = "ws://172.30.1.16:9090";
-const UNLOADING_SECONDS = 10; // work target 대기 10초
+const UNLOADING_SECONDS = 10;
 
 /* ===============================
  * Time
@@ -196,9 +192,9 @@ const motion = reactive({ lin: 0, ang: 0, status: "Offline" });
 const poseWorld = reactive({ x: 0, y: 0, yaw: 0 });
 
 const nav = reactive({
-  missionState: "N/A",
+  missionState: "초기 위치에서 대기",
   emergency: false,
-  waitRemaining: 0,
+  waitRemaining: 10,
 });
 
 // Battery normalization
@@ -399,7 +395,7 @@ function connectRos() {
       messageType: "std_msgs/msg/String",
     });
     missionTopic.subscribe((m) => {
-      nav.missionState = m.data ?? "N/A";
+      nav.missionState = m.data ?? "초기 위치에서 대기";
     });
 
     emergencyTopic = new ROSLIB.Topic({

@@ -49,6 +49,7 @@
         </ul>
 
         <div class="ai-box">
+          <div class="ai-border"></div>
           <div class="ai-header">
             <span>AI Inference</span>
             <span class="text-muted">{{ lastRxText }}</span>
@@ -58,7 +59,7 @@
           <div v-if="aiStatus !== null"
               class="ai-status"
               :class="aiStatus ? 'ok' : 'err'">
-            {{ aiStatus ? "정상" : "Error" }}
+            {{ aiStatus ? "Normal" : "Error" }}
           </div>
 
           <div v-else class="ai-empty">
@@ -359,9 +360,11 @@ onBeforeUnmount(() => {
 .ai-box {
   margin-top: 12px;
   padding-top: 10px;
+}
+.ai-border {
+  padding-top: 15px;
   border-top: 1px dashed #d4d9e6;
 }
-
 .ai-header {
   display: flex;
   justify-content: space-between;
@@ -389,8 +392,8 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 .ai-status {
-  margin: 12px 0 6px;
-  padding: 16px 12px;
+  margin: 40px 0 6px;
+  padding: 35px 12px;
   border-radius: 12px;
   text-align: center;
   font-size: 2.2rem;
@@ -400,11 +403,11 @@ onBeforeUnmount(() => {
 .ai-status.ok {
   color: #067647;
   background: #ecfdf3;
-  border: 2px solid #34d399;
+  border: 4px solid #34d399;
 }
 .ai-status.err {
   color: #b42318;
   background: #fef3f2;
-  border: 2px solid #f87171;
+  border: 4px solid #f87171;
 }
 </style>
