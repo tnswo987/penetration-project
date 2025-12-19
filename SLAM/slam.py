@@ -9,7 +9,7 @@ from pymodbus.client import ModbusTcpClient
 from std_msgs.msg import String, Bool, Int32
 
 # ---------------- Modbus 설정 ----------------
-MODBUS_HOST = "127.0.0.1"
+MODBUS_HOST = "192.168.110.108"
 MODBUS_PORT = 20000
 MODBUS_UNIT_ID = 1
 

@@ -1,3 +1,41 @@
+# Web 실행 방법
+
+```
+1. git pull
+2. vue official download
+3. backend
+  Node Version이 맞지 않으면
+   - nvm 설치 (이미 있으면 스킵)
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    source ~/.bashrc
+   - Node 18 설치 & 사용
+    nvm install 18
+    nvm use 18
+    nvm alias default 18
+   - node_modules 깨끗이 재설치
+    cd ~/pjt/penetration-project/web/backend
+    rm -rf node_modules package-lock.json
+    npm install
+    npm start
+4. frontend
+  Node Version이 맞지 않으면
+   - nvm 설치 (이미 있으면 스킵)
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    source ~/.bashrc
+   - Node 20.19.0 설치 & 사용
+    nvm install 20.19.0
+    nvm use 20.19.0
+    node -v
+   - node_modules 깨끗이 재설치
+    cd ~/pjt/penetration-project/web/frontend
+    rm -rf node_modules package-lock.json
+    npm install
+    npm run dev -- --host
+5. websocket
+  pip install websocket-server
+
+```
+
 # Critical Thing
 
 ### 작업자 공간 ----/---- 로봇 작업 공간 분리

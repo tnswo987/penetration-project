@@ -18,16 +18,16 @@
           <!-- Battery -->
           <div class="content-card tb-card">
             <div class="tb-card-header">
-              <span>Battery</span>
+              <span>Robot State</span>
             </div>
 
             <div class="bar-row">
               <div class="bar-label">
                 <span>State of Charge</span>
-                <span class="text-muted">{{ socText }}</span>
+                <span class="text-muted">{{ socText + '%'}}</span>
               </div>
               <div class="bar-track">
-                <div class="bar-fill" :style="{ width: minBar(socPct) + '%' }"></div>
+                <div class="bar-fill" :style="{ width: minBar(socPct) - Number(100 -socText) + '%' }"></div>
               </div>
             </div>
 
@@ -43,11 +43,8 @@
 
             <div class="bar-row">
               <div class="bar-label">
-                <span>Current</span>
-                <span class="text-muted">{{ battery.current.toFixed(1) }} A</span>
-              </div>
-              <div class="bar-track">
-                <div class="bar-fill" :style="{ width: minBar(currPct) + '%' }"></div>
+                <span>Distance of Obstacles</span>
+                <span class="text-muted">{{ obstacle.dist.toFixed(1) }}</span>
               </div>
             </div>
           </div>
@@ -161,9 +158,9 @@ function minBar(pct, min = 4) {
 /* ===============================
  * Config
  * =============================== */
-const mapUrl = "public/maps/final.png";
-const MAP_YAML_URL = "public/maps/final.yaml";
-const ROSBRIDGE_URL = "ws://172.30.1.16:9090";
+const mapUrl = "/public/maps/final.png";
+const MAP_YAML_URL = "/public/maps/final.yaml";
+const ROSBRIDGE_URL = "ws://192.168.110.108:9090";
 const UNLOADING_SECONDS = 10;
 
 /* ===============================
@@ -187,7 +184,7 @@ function updateNow() {
  * =============================== */
 const rosConnected = ref(false);
 
-const battery = reactive({ soc: 0, voltage: 0, current: 0 });
+const battery = reactive({ soc: 0, voltage: 0});
 const motion = reactive({ lin: 0, ang: 0, status: "Offline" });
 const poseWorld = reactive({ x: 0, y: 0, yaw: 0 });
 
@@ -198,25 +195,22 @@ const nav = reactive({
 });
 
 // Battery normalization
-const VOLT_MIN = 22.0;
-const VOLT_MAX = 26.0;
+const VOLT_MIN = 0.0;
+const VOLT_MAX = 30.0;
 const CURR_MAX_ABS = 5.0;
 const LIN_MAX = 0.35;
 const ANG_MAX = 1.8;
 
+const obstacle = reactive({ dist: 0 });
+
 const socText = computed(() =>
-  battery.soc < 0 ? "N/A" : `${(battery.soc * 100).toFixed(0)} %`
+  battery.soc < 0 ? "N/A" : `${(battery.soc).toFixed(0)}`
 );
 
 const socPct = computed(() => (battery.soc < 0 ? 0 : toPct(battery.soc)));
 
 const voltPct = computed(() => {
   const v = (battery.voltage - VOLT_MIN) / (VOLT_MAX - VOLT_MIN);
-  return toPct(v);
-});
-
-const currPct = computed(() => {
-  const v = Math.abs(battery.current) / CURR_MAX_ABS;
   return toPct(v);
 });
 
@@ -260,7 +254,7 @@ const canvasRef = ref(null);
 
 // 로봇 이미지
 const robotImg = new Image();
-robotImg.src = "public/icons/turtlebot.png";
+robotImg.src = "/public/icons/turtlebot.png";
 let robotImgReady = false;
 robotImg.onload = () => (robotImgReady = true);
 
@@ -330,17 +324,42 @@ function handleResize() {
  * ROS (rosbridge)
  * =============================== */
 let ros;
-let batteryTopic, odomTopic, amclTopic;
+let batteryTopic, odomTopic, amclTopic, scanTopic;
 let missionTopic, emergencyTopic, waitTopic;
 
 function quatToYaw(q) {
   return Math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));
 }
 
+// ===== Motion smoothing params =====
+const LIN_DEADBAND = 0.0;   // m/s, 이 이하로는 0으로 고정
+const ANG_DEADBAND = 0.05;   // rad/s, 이 이하로는 0으로 고정
+
+const LIN_MAX_JUMP = 0.25;   // 1프레임에 이 이상 튀면 이상치로 보고 무시 (옵션)
+const ANG_MAX_JUMP = 2.5;
+
+const EMA_ALPHA = 0.35;      // 0~1 (작을수록 더 부드러움)
+
+// helpers
+const safeNum = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
+function deadband(v, eps) {
+  return Math.abs(v) < eps ? 0 : v;
+}
+
+function ema(prev, next, alpha) {
+  return prev + alpha * (next - prev);
+}
+
+function clampJump(prev, next, maxJump) {
+  // 너무 큰 순간 튐은 무시하고 이전값 유지
+  return Math.abs(next - prev) > maxJump ? prev : next;
+}
+
+
 function computeStatus(l, a) {
-  if (Math.abs(l) < 0.01 && Math.abs(a) < 0.01) return "Stopped";
-  if (Math.abs(a) > 0.25) return "Turning";
-  return "Cruising";
+  if (Math.abs(l) < 0.0001 && Math.abs(a) < 0.0001) return "Stopped";
+  else return "Cruising";
 }
 
 function connectRos() {
@@ -358,10 +377,33 @@ function connectRos() {
       messageType: "sensor_msgs/msg/BatteryState",
     });
     batteryTopic.subscribe((m) => {
-      battery.soc = m.percentage ?? -1;
+      battery.soc = (m.percentage ?? -1);
       battery.voltage = m.voltage ?? 0;
-      battery.current = m.current ?? 0;
     });
+
+    scanTopic = new ROSLIB.Topic({
+      ros,
+      name: "/scan",
+      messageType: "sensor_msgs/msg/LaserScan",
+    });
+
+    scanTopic.subscribe((m) => {
+      const rmin = m.range_min ?? 0.12;
+      const rmax = m.range_max ?? 3.5;
+
+      let minDist = Infinity;
+      for (const r of m.ranges) {
+        if (!Number.isFinite(r)) continue;
+        if (r <= 0) continue;
+        if (r < rmin || r > rmax) continue;
+        if (r < minDist) minDist = r;
+      }
+
+      if (Number.isFinite(minDist)) {
+        obstacle.dist = minDist;
+      }
+    });
+
 
     // Odom
     odomTopic = new ROSLIB.Topic({
@@ -369,11 +411,35 @@ function connectRos() {
       name: "/odom",
       messageType: "nav_msgs/Odometry",
     });
+    const safeNum = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+
     odomTopic.subscribe((m) => {
-      motion.lin = m.twist.twist.linear.x ?? 0;
-      motion.ang = m.twist.twist.angular.z ?? 0;
+      let lin = safeNum(m?.twist?.twist?.linear?.x);
+      let ang = safeNum(m?.twist?.twist?.angular?.z);
+
+      // 값이 없으면 업데이트 스킵 (이전값 유지)
+      if (lin === null && ang === null) return;
+
+      // 없으면 0으로 만들지 말고 "이전값"을 기반으로 처리
+      if (lin === null) lin = motion.lin;
+      if (ang === null) ang = motion.ang;
+
+      // 1) 데드존: 0 근처 흔들림 제거
+      lin = deadband(lin, LIN_DEADBAND);
+      ang = deadband(ang, ANG_DEADBAND);
+
+      // 2) 순간 점프 방지(옵션이지만 실기에서 효과 큼)
+      lin = clampJump(motion.lin, lin, LIN_MAX_JUMP);
+      ang = clampJump(motion.ang, ang, ANG_MAX_JUMP);
+
+      // 3) EMA로 부드럽게
+      motion.lin = ema(motion.lin, lin, EMA_ALPHA);
+      motion.ang = ema(motion.ang, ang, EMA_ALPHA);
+
+      // status도 "필터된 값" 기준으로
       motion.status = computeStatus(motion.lin, motion.ang);
     });
+
 
     // AMCL
     amclTopic = new ROSLIB.Topic({
@@ -435,6 +501,7 @@ function disconnectRos() {
   batteryTopic?.unsubscribe();
   odomTopic?.unsubscribe();
   amclTopic?.unsubscribe();
+  scanTopic?.unsubscribe();
 
   missionTopic?.unsubscribe();
   emergencyTopic?.unsubscribe();
@@ -493,7 +560,7 @@ onBeforeUnmount(() => {
 }
 
 .tb-map-card {
-  margin-top: 50px;
+  margin-top: 15px;
   padding: 12px 14px 14px;
 }
 
