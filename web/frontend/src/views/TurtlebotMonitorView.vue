@@ -254,7 +254,6 @@ const canvasRef = ref(null);
 
 // 로봇 이미지
 const robotImg = new Image();
-robotImg.src = "/public/icons/turtlebot.png";
 let robotImgReady = false;
 robotImg.onload = () => (robotImgReady = true);
 
@@ -311,8 +310,8 @@ function drawOverlay() {
 
   // 점 표시(옵션)
   ctx.beginPath();
-  ctx.arc(px, py, 4, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(31,41,51,0.8)";
+  ctx.arc(px, py, 7, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(237,28,36,0.8)";
   ctx.fill();
 }
 

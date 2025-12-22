@@ -12,7 +12,7 @@
 
         <nav class="sidebar-nav">
           <RouterLink to="/logs" class="sidebar-zone zone-logs" active-class="active">
-            <div class="sidebar-label">Modbus Log</div>
+            <div class="sidebar-label">Log</div>
           </RouterLink>
 
           <div class="sidebar-divider"></div>
