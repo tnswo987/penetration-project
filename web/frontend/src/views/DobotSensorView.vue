@@ -152,12 +152,12 @@ function connectWS() {
 
       const src = msg.mpu ?? {};
       // 숫자 갱신 (없으면 null 유지)
-      mpu.ax = numOrNull(src.ax);
-      mpu.ay = numOrNull(src.ay);
-      mpu.az = numOrNull(src.az);
-      mpu.gx = numOrNull(src.gx);
-      mpu.gy = numOrNull(src.gy);
-      mpu.gz = numOrNull(src.gz);
+      mpu.ax = numOrNull(src.AcX);
+      mpu.ay = numOrNull(src.AcY);
+      mpu.az = numOrNull(src.AcZ);
+      mpu.gx = numOrNull(src.GyX);
+      mpu.gy = numOrNull(src.GyY);
+      mpu.gz = numOrNull(src.GyZ);
 
       // AI 결과
       if (msg.ai !== undefined && msg.ai !== null) {
