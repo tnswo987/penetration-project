@@ -9,7 +9,7 @@ from pymodbus.client import ModbusTcpClient
 from std_msgs.msg import String, Bool, Int32
 
 # ---------------- Modbus 설정 ----------------
-MODBUS_HOST = "192.168.110.108"
+MODBUS_HOST = "192.168.110.101"
 MODBUS_PORT = 20000
 MODBUS_UNIT_ID = 1
 
@@ -26,22 +26,22 @@ modbus_running = True
 modbus_lock = threading.Lock()
 modbus_client = None
 
-WORK_ROUTE = {
-        "work_init": [
-        -1.96, -0.497, 0.076,
-        0.9999676506991817
-    ],
-    "work_target": [
-        1.77, 0.601, -0.00137,
-        0.9999676506991817
-    ],
-}
+# WORK_ROUTE = {
+#         "work_init": [
+#         -1.96, -0.497, 0.076,
+#         0.9999676506991817
+#     ],
+#     "work_target": [
+#         1.77, 0.601, -0.00137,
+#         0.9999676506991817
+#     ],
+# }
 
 # 초기 실제 값
-# WORK_ROUTE = {
-#     "work_target": [3.67, 2.22, 0.00247, 1.0],
-#     "work_init": [-0.17, 0.00495, 0.14, 1.0],
-# }
+WORK_ROUTE = {
+    "work_target": [3.67, 2.22, 0.00247, 1.0],
+    "work_init": [-0.17, 0.00495, 0.14, 1.0],
+}
 
 UNLOADING_SECONDS = 10
 
