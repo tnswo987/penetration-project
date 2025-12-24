@@ -200,3 +200,20 @@ flowchart TD
 
 **WebSocket**  
 - Streams real-time system status and logs to the web dashboard  
+
+<a name="installation"></a>
+## Installation
+
+```bash
+# (optional) create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux / macOS
+# venv\Scripts\activate   # Windows
+
+# install dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+
+
