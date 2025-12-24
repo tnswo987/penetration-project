@@ -39,7 +39,6 @@ Furthermore, vibration data collected from the robot base is analyzed using an *
 - [Hardware](#hardware)
 - [Installation](#installation)
 - [Execution](#execution)
-- [Run](#run)
 
 
 <a name="team--development-period"></a>
@@ -215,5 +214,90 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+<a name="execution"></a>
+## Execution
+
+```bash
+# ==============================================================
+# Prerequisites
+# ==============================================================
+# - LSTM AutoEncoder model must be trained in advance
+# - Trained model file (.h5 / .pkl) must be placed in the model directory
+# - All devices must be on the same network
+# - Replace placeholders (<...>) with your own environment settings
 
 
+# ==============================================================
+# Ubuntu / Raspberry Pi
+# 1. Conveyor Control
+# ==============================================================
+ssh <USER>@<RASPBERRY_PI_IP>
+cd <PROJECT_DIRECTORY>
+python gwang_pjt.py
+
+
+# ==============================================================
+# Ubuntu / TurtleBot
+# 2. TurtleBot Bring-up & Navigation
+# ==============================================================
+ssh <USER>@<TURTLEBOT_IP>
+
+# Bring up TurtleBot hardware
+ros2 launch turtlebot3_bringup robot.launch.py usb_port:=/dev/ttyACM*
+
+# Start Navigation2 with a pre-built map
+ros2 launch turtlebot3_navigation2 navigation2.launch.py \
+use_sim_time:=True \
+map:=<MAP_FILE_PATH>
+
+# Teleoperation (set initial pose manually)
+ros2 run turtlebot3_teleop teleop_keyboard
+
+
+# ==============================================================
+# Ubuntu / Control PC
+# 3. SLAM & ROS Bridge
+# ==============================================================
+cd <PROJECT_ROOT>/SLAM
+python3 slam.py
+
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+
+
+# ==============================================================
+# Windows / Main Control PC
+# ==============================================================
+# 0. Device check
+# - Dobot Magician connection
+# - Bluetooth (UART / HC-05)
+# - Intel RealSense D435i
+
+
+# 1. Hand–Eye Calibration (CALIB_POINTS)
+python main.py
+
+
+# 2. ROI configuration
+# (Set ROI interactively via vision window)
+
+
+# 3. Modbus TCP Server
+python server.py
+
+
+# 4. Main Process Execution
+python main.py
+
+
+# 5. Web Dashboard (Frontend)
+cd front
+npm run dev -- --host
+
+
+# 6. Backend Server
+npm start
+
+
+# 7. WebSocket Server
+python ws.py
+```
