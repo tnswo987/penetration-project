@@ -62,60 +62,78 @@ Furthermore, vibration data collected from the robot base is analyzed using an *
 ## System Flow
 ```mermaid
 flowchart TD
-    A[System Power ON] --> B[Initialize System]
+    A[System Start] --> B[Initialize Modules]
 
-    B --> B1[Modbus TCP Client]
+    B --> B1[Modbus TCP]
     B --> B2[Dobot Robot]
-    B --> B3[UART STM32]
+    B --> B3[STM32 UART]
     B --> B4[RealSense D435i]
     B --> B5[Hand Eye Calibration]
 
     B --> C[WAIT_START]
 
-    C -->|START_110| D[START_PROCESS]
+    %% =====================
+    %% Main Process Flow
+    %% =====================
+    C -->|UART 110| D[START_PROCESS]
     D --> E[Conveyor ON]
 
-    E --> F[Object Detection]
-    F --> G{Detected Color}
+    E --> F[DETECT_OBJECT]
+    F --> G{Color Detected}
 
-    G -->|RGB| H[Conveyor OFF]
-    H --> I[Send Color Code]
+    G -->|RED GREEN BLUE| H[Conveyor OFF]
+    H --> I[Send Color Code UART]
     I --> J[WAIT_CLASSIFY]
 
-    J -->|ACK_101| K[Robot Pick and Place]
-    K --> L[COMPLETE_TASK]
+    J -->|UART 101| K[CLASSIFY_OBJECT]
+    K --> L[Pick and Place]
+    L --> M[COMPLETE_TASK]
 
-    L -->|CONTINUE| F
-    L -->|FINISH_100| M[FINISH_PROCESS]
+    M -->|Continue| F
+    M -->|UART 100| N[FINISH_PROCESS]
 
-    M --> N[Robot Home]
-    N --> O[Export Logs]
+    N --> O[Robot Home]
     O --> C
 
-    G -->|YELLOW| T[Yellow Count]
-    T -->|THRESHOLD| U[TurtleBot Start]
-    U --> V[Monitor TurtleBot]
-    V --> F
+    %% =====================
+    %% Yellow Object Flow
+    %% =====================
+    G -->|YELLOW| Y[Increase Yellow Count]
+    Y -->|Threshold| Z[TurtleBot Start]
+    Z --> Z1[Monitor TurtleBot]
+    Z1 --> F
 
-    F -->|EMERGENCY_111| X[EMERGENCY STOP]
-    K -->|EMERGENCY_111| X
+    %% =====================
+    %% Emergency Handling
+    %% =====================
+    F -->|UART 111| X[EMERGENCY ON]
+    K -->|UART 111| X
 
-    X --> Y[Robot Stop]
-    Y --> Z[Restore State]
-    Z --> F
+    X --> X1[Robot Stop]
+    X --> X2[Conveyor OFF]
 
+    X -->|UART 000| R[EMERGENCY OFF]
+    R --> F
+
+    %% =====================
+    %% Web Dashboard
+    %% =====================
     F --> W[Web Dashboard]
     K --> W
-    L --> W
+    M --> W
     X --> W
 
     W --> W1[Real Time Logs]
     W --> W2[Dobot Status]
     W --> W3[TurtleBot Status]
 
+    %% =====================
+    %% Predictive Maintenance
+    %% =====================
     B2 --> P[Vibration Data]
     P --> Q[LSTM AutoEncoder]
-    Q --> R{Anomaly}
-    R -->|YES| W
-    R -->|NO| F
+    Q --> S{Anomaly}
+
+    S -->|Yes| W
+    S -->|No| F
 ```
