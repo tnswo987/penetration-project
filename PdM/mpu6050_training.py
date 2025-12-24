@@ -75,14 +75,14 @@ model.compile(optimizer='adam', loss='mae')
 model.summary()
 early_stop = EarlyStopping(
     monitor='val_loss',
-    patience=8,
+    patience=30,
     restore_best_weights=True,
 )
 
 history = model.fit(
     trainX,
     trainX,
-    epochs=100,
+    epochs=30,
     batch_size=32,
     validation_split=0.1,
     shuffle=False,

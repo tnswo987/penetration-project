@@ -2,7 +2,7 @@ import serial
 import csv
 import time
 
-PORT = "COM9"
+PORT = "COM5"
 BAUDRATE = 115200
 CSV_FILENAME = "mpu6050_train.csv"
 

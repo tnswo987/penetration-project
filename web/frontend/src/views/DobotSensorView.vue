@@ -225,7 +225,7 @@ let chart = null;
 const errChartEl = ref(null);
 let errChart = null;
 
-const ERR_THRESHOLD = 1.1834726537353302;
+const ERR_THRESHOLD = 1.1210750743835052;
 
 const sendHz = 30;
 // 최근 10초만 보여주기
@@ -457,6 +457,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   font-weight: 600;
   font-size: 0.9rem;
+  margin-top: 30px;
   margin-bottom: 8px;
 }
 
