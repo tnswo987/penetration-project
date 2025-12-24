@@ -60,6 +60,11 @@ Furthermore, vibration data collected from the robot base is analyzed using an *
 
 <a name="system-flow"></a>
 ## System Flow
+
+The following diagram describes the actual execution flow of the system,
+based on the implemented state machine, embedded communication,
+robot control logic, web monitoring, and predictive maintenance pipeline.
+
 ```mermaid
 flowchart TD
     A[System Start] --> B[Initialize Modules]
