@@ -35,7 +35,7 @@ Furthermore, vibration data collected from the robot base is analyzed using an *
 
 ## System Video
 
-<p align="center">
+<p align="left">
   <a href="https://www.youtube.com/watch?v=CyqiWDAXQRI">
     <img src="https://img.youtube.com/vi/CyqiWDAXQRI/0.jpg" width="700">
   </a>
